@@ -87,37 +87,27 @@ def _load_binary_module(binary_path: Path) -> Any:
             "Please ensure the correct binaries are installed."
         )
 
-    # Add the _bin directory to sys.path temporarily
-    bin_dir = str(binary_path.parent)
-    if bin_dir not in sys.path:
-        sys.path.insert(0, bin_dir)
+    # The Nuitka binary was compiled from 'harmoneyes_theia.py'
+    # So it has PyInit_harmoneyes_theia as its init function
+    # We MUST use this exact name when loading
+    actual_module_name = "harmoneyes_theia"
+    internal_module_name = "_harmoneyes_theia_compiled"
 
-    try:
-        # Import using the filename stem as the module name
-        # This matches the PyInit function that Nuitka created
-        module_name = binary_path.stem.replace("-", "_")
+    # Create loader with the actual module name (must match PyInit function)
+    loader = importlib.machinery.ExtensionFileLoader(actual_module_name, str(binary_path))
 
-        # Create a spec for the extension module
-        loader = importlib.machinery.ExtensionFileLoader(module_name, str(binary_path))
-        spec = importlib.util.spec_from_loader(module_name, loader, origin=str(binary_path))
+    # Create module manually without using spec_from_loader to avoid auto-registration
+    spec = importlib.machinery.ModuleSpec(actual_module_name, loader, origin=str(binary_path))
+    module = importlib.util.module_from_spec(spec)
 
-        if spec is None:
-            raise ImportError(f"Failed to create module spec for {binary_path}")
+    # Register under our internal name BEFORE executing
+    # This prevents conflicts with the current package
+    sys.modules[internal_module_name] = module
 
-        module = importlib.util.module_from_spec(spec)
+    # Now execute the module (calls PyInit_harmoneyes_theia)
+    loader.exec_module(module)
 
-        # Store in sys.modules with our internal name
-        sys.modules[f"harmoneyes_theia._binary_{module_name}"] = module
-
-        # Execute the module
-        if spec.loader:
-            spec.loader.exec_module(module)
-
-        return module
-    finally:
-        # Clean up sys.path
-        if bin_dir in sys.path:
-            sys.path.remove(bin_dir)
+    return module
 
 
 # Detect platform and load the appropriate binary
