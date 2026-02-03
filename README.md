@@ -8,15 +8,15 @@ Python SDK for real-time eye tracking analysis, cognitive load prediction, and s
 
 ```bash
 # Install directly with pip
-pip install git+https://github.com/RightEyeLLC/HarmonEyesTheia.git
+pip install git+https://github.com/harmoneyes/HarmonEyesTheia.git
 
 # Or add to requirements.txt
-git+https://github.com/RightEyeLLC/HarmonEyesTheia.git
+git+https://github.com/harmoneyes/HarmonEyesTheia.git
 
 # Or add to pyproject.toml
 [project]
 dependencies = [
-    "harmoneyes-theia @ git+https://github.com/RightEyeLLC/HarmonEyesTheia.git"
+    "harmoneyes-theia @ git+https://github.com/harmoneyes/HarmonEyesTheia.git"
 ]
 ```
 
@@ -24,7 +24,7 @@ dependencies = [
 
 ```bash
 # Clone the repository
-git clone https://github.com/RightEyeLLC/HarmonEyesTheia.git
+git clone https://github.com/harmoneyes/HarmonEyesTheia.git
 cd HarmonEyesTheia
 
 # Install the package
