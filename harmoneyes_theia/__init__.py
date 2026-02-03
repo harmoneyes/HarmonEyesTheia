@@ -8,6 +8,7 @@ compiled binary for the Theia SDK.
 import sys
 import platform
 import importlib.util
+import importlib.machinery
 from pathlib import Path
 from typing import Any
 
@@ -86,16 +87,37 @@ def _load_binary_module(binary_path: Path) -> Any:
             "Please ensure the correct binaries are installed."
         )
 
-    # Use importlib to load the binary as a module
-    spec = importlib.util.spec_from_file_location("_harmoneyes_theia_binary", binary_path)
-    if spec is None or spec.loader is None:
-        raise ImportError(f"Failed to create module spec for {binary_path}")
+    # Add the _bin directory to sys.path temporarily
+    bin_dir = str(binary_path.parent)
+    if bin_dir not in sys.path:
+        sys.path.insert(0, bin_dir)
 
-    module = importlib.util.module_from_spec(spec)
-    sys.modules["_harmoneyes_theia_binary"] = module
-    spec.loader.exec_module(module)
+    try:
+        # Import using the filename stem as the module name
+        # This matches the PyInit function that Nuitka created
+        module_name = binary_path.stem.replace("-", "_")
 
-    return module
+        # Create a spec for the extension module
+        loader = importlib.machinery.ExtensionFileLoader(module_name, str(binary_path))
+        spec = importlib.util.spec_from_loader(module_name, loader, origin=str(binary_path))
+
+        if spec is None:
+            raise ImportError(f"Failed to create module spec for {binary_path}")
+
+        module = importlib.util.module_from_spec(spec)
+
+        # Store in sys.modules with our internal name
+        sys.modules[f"harmoneyes_theia._binary_{module_name}"] = module
+
+        # Execute the module
+        if spec.loader:
+            spec.loader.exec_module(module)
+
+        return module
+    finally:
+        # Clean up sys.path
+        if bin_dir in sys.path:
+            sys.path.remove(bin_dir)
 
 
 # Detect platform and load the appropriate binary
