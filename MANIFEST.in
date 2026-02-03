@@ -1,0 +1,4 @@
+# Include binary files in source distributions
+include harmoneyes_theia/_bin/*.so
+include harmoneyes_theia/_bin/*.pyd
+include README.md
