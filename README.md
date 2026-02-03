@@ -43,7 +43,7 @@ This software is proprietary and requires a valid license key to operate. The co
 
 - **Copyright**: © RightEye LLC / HarmonEyes
 - **License Type**: Proprietary / Commercial
-- **Usage**: Contact support@harmoneyes.com for licensing information
+- **Obtaining a License**: TODO
 
 ## Support
 
