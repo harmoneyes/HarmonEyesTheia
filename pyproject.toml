@@ -3,7 +3,7 @@ name = "harmoneyes-theia"
 version = "1.0.0"
 description = "HarmonEyes Theia SDK - Eye tracking, cognitive load, and sleepiness detection"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.13"
 license = {text = "Proprietary"}
 authors = [
     {name = "RightEye LLC / HarmonEyes", email = "support@harmoneyes.com"}
@@ -21,12 +21,81 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
-dependencies = []
+# All dependencies needed by the compiled SDK
+dependencies = [
+    # Core theia-python dependencies
+    "cryptography>=42.0.0",
+    "python-dotenv>=0.9.9",
+    "requests>=2.32.5",
+    "urllib3>=2.6.3",
+
+    # Machine learning and data processing (sdk-features, sdk-modeling)
+    "pandas==2.3.3",
+    "numpy>=1.26.0,<2.2.0",
+    "scikit-learn==1.6.1",
+    "xgboost==3.1.2",
+    "imbalanced-learn==0.14.0",
+    "PyWavelets==1.9.0",
+
+    # Video and image processing (pupil-labs, ganzin)
+    "opencv-python>=4.5.0",
+    "av>=15.0.0",
+
+    # Audio processing (ganzin)
+    "pyaudio>=0.2.14",
+
+    # Networking and async (pupil-labs, ganzin)
+    "aiohttp>=3.12.14",
+    "aiodns>=3.5.0",
+    "aiohappyeyeballs>=2.6.1",
+    "aiortsp>=1.4.0",
+    "aiosignal>=1.4.0",
+    "websockets>=15.0.1",
+
+    # Pupil Labs specific dependencies
+    "pupil-labs-neon-recording>=1.0.3",
+    "pupil-labs-realtime-api>=1.6.2",
+    "pupil-labs-video>=1.0.6",
+    "zeroconf>=0.147.0",
+
+    # Protocol buffers and serialization
+    "protobuf>=4.25.8",
+
+    # Utilities
+    "attrs>=25.3.0",
+    "Brotli>=1.1.0",
+    "cffi>=1.17.1",
+    "Deprecated>=1.2.18",
+    "dpkt>=1.9.8",
+    "frozenlist>=1.7.0",
+    "fsspec>=2025.7.0",
+    "idna>=3.10",
+    "ifaddr>=0.2.0",
+    "multidict>=6.6.3",
+    "propcache>=0.3.2",
+    "pycares>=4.9.0",
+    "pycparser>=2.22",
+    "pydantic>=2.11.7",
+    "pydantic_core>=2.33.2",
+    "python-dateutil>=2.9.0",
+    "python-yakh>=0.4.1",
+    "pytz>=2025.2",
+    "PyYAML>=6.0.2",
+    "rich==13.5.3",
+    "six>=1.17.0",
+    "typing-inspection>=0.4.1",
+    "typing_extensions>=4.14.1",
+    "tzdata>=2025.2",
+    "universal_pathlib>=0.2.6",
+    "wrapt>=1.17.2",
+    "yarl>=1.20.1",
+]
 
 [project.urls]
-Homepage = "https://github.com/RightEyeLLC/HarmonEyesTheia"
-Repository = "https://github.com/RightEyeLLC/HarmonEyesTheia"
-Documentation = "https://github.com/RightEyeLLC/HarmonEyesTheia#readme"
+Homepage = "https://harmoneyes.com"
+Repository = "https://github.com/harmoneyes/HarmonEyesTheia"
+Documentation = "https://github.com/harmoneyes/HarmonEyesTheia#readme"
+"Bug Tracker" = "https://github.com/harmoneyes/HarmonEyesTheia/issues"
 
 [build-system]
 requires = ["hatchling"]
