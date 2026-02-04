@@ -3,7 +3,7 @@ name = "harmoneyes-theia"
 version = "1.0.0"
 description = "HarmonEyes Theia SDK - Eye tracking, cognitive load, and sleepiness detection"
 readme = "README.md"
-requires-python = ">=3.11,<3.13"
+requires-python = "==3.12"
 license = {text = "Proprietary"}
 authors = [
     {name = "RightEye LLC / HarmonEyes", email = "support@harmoneyes.com"}
@@ -15,7 +15,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering",
     "Topic :: Software Development :: Libraries :: Python Modules",

@@ -33,9 +33,23 @@ pip install .
 
 
 ## Requirements
-- Python 3.11 or 3.12
+- Python 3.12 only
 - No additional dependencies (all compiled into the binary)
 - **License Key**: A valid license key is required to use the SDK.
+
+### Using pyenv for Python 3.12
+
+```bash
+# Install pyenv
+brew install pyenv
+# Install Python 3.12
+pyenv install 3.12
+# Set local Python version
+pyenv local 3.12
+
+python3 --version
+#> Python 3.12.X
+```
 
 ## License & Usage
 
