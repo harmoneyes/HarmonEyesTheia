@@ -3,7 +3,7 @@ name = "harmoneyes-theia"
 version = "1.0.0"
 description = "HarmonEyes Theia SDK - Eye tracking, cognitive load, and sleepiness detection"
 readme = "README.md"
-requires-python = "==3.12"
+requires-python = ">=3.12, <3.13"
 license = {text = "Proprietary"}
 authors = [
     {name = "RightEye LLC / HarmonEyes", email = "support@harmoneyes.com"}
