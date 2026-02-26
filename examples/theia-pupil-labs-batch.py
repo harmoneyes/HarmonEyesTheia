@@ -5,7 +5,6 @@ Demonstrates how to use the Theia SDK batch prediction methods for
 cognitive load and drowsiness analysis on pre-recorded gaze data.
 
 Prerequisites:
-    - A valid Theia license key (set via THEIA_LICENSE_KEY environment variable)
     - A gaze data CSV file (gaze_and_eye_state.csv) in the same directory
     - A scene camera calibration file (scene_camera.json) in the same directory
 
@@ -29,23 +28,14 @@ SCENE_CAMERA_JSON = "scene_camera.json"
 
 def _create_sdk() -> harmoneyes_theia.TheiaSDK:
     """Create and return a configured TheiaSDK instance.
-
-    The license key is read from the THEIA_LICENSE_KEY environment variable.
-    Set it before running:  export THEIA_LICENSE_KEY="YOUR-LICENSE-KEY"
     """
     import os
 
     license_key = "your-license-key-here"
-    if not license_key:
-        raise RuntimeError(
-            "THEIA_LICENSE_KEY environment variable is not set. "
-            "Set it with: export THEIA_LICENSE_KEY=\"YOUR-LICENSE-KEY\""
-        )
 
     return harmoneyes_theia.TheiaSDK(
         license_key=license_key,
         platform="WT",
-        cog_load_prediction_method="sdk",
     )
 
 
