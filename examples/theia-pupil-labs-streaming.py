@@ -22,7 +22,7 @@ import harmoneyes_theia
 # Configuration
 # ---------------------------------------------------------------------------
 
-LICENSE_KEY = "N99X-7NUA-W4WC-UXXJ-9AKN-E39T-JJEM-YMRC"
+LICENSE_KEY = "your-license-key-here"
 
 # Duration in seconds to collect data.
 # Drowsiness updates every ~120s, so 400s captures at least 3 updates.

@@ -23,7 +23,7 @@ import harmoneyes_theia
 # Configuration
 # ---------------------------------------------------------------------------
 
-GANZIN_IP = "192.168.5.9"
+GANZIN_IP = "192.168.1.100"
 GANZIN_PORT = 8080
 
 # Duration in seconds to collect data.
