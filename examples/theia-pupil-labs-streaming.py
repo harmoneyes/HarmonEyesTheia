@@ -5,9 +5,8 @@ Connects to a Pupil Labs Neon eye tracker, streams gaze data,
 and prints real-time cognitive load and drowsiness predictions.
 
 Prerequisites:
-  1. Compile the SDK:  ./scripts/build_with_local_sdk.sh
-  2. Set your license key below or in a .env file at the project root.
-  3. Ensure the Pupil Labs Neon device is paired and reachable.
+  1. Set your license key below or in a .env file at the project root.
+  2. Ensure the Pupil Labs Neon device is paired and reachable.
 
 Usage:
   python theia-pupil-labs-streaming.py
