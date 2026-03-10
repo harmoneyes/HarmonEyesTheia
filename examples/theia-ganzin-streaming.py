@@ -5,10 +5,9 @@ Connects to a Ganzin Sol eye tracker over the network, streams gaze data,
 and prints real-time cognitive load and drowsiness predictions.
 
 Prerequisites:
-  1. Compile the SDK:  ./scripts/build_with_local_sdk.sh
-  2. Set your license key in a .env file at the project root:
-       THEIA_TEST_LICENSE_KEY=your-license-key
-  3. Ensure the Ganzin Sol device is reachable at the configured IP/port.
+  1. Set your license key below:
+       LICENSE_KEY=your-license-key
+  2. Ensure the Ganzin Sol device is reachable at the configured IP/port.
 
 Usage:
   python scripts/theia-ganzin-test.py
