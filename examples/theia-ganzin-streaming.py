@@ -106,18 +106,24 @@ def main():
             }
 
             # Cognitive load predictions (updates every 5-second window)
-            cog_levels, batch_num, _ = sdk.get_cog_load_levels()
-            if cog_levels is not None:
-                prediction = cog_levels["cog-load-general-smoothed"]["prediction"]
-                row["cognitive_load"] = prediction
-                row["cognitive_load_label"] = format_cog_load(prediction)
-                print(f"  Cognitive Load: {format_cog_load(prediction)}")
+            try:
+                cog_levels, batch_num, _ = sdk.get_cog_load_levels()
+                if cog_levels is not None:
+                    prediction = cog_levels["cog-load-general-smoothed"]["prediction"]
+                    row["cognitive_load"] = prediction
+                    row["cognitive_load_label"] = format_cog_load(prediction)
+                    print(f"  Cognitive Load: {format_cog_load(prediction)}")
+            except AttributeError:
+                pass  # SDK not ready yet (warmup period)
 
             # Drowsiness predictions (updates every ~120 seconds)
-            drowsiness, drowsiness_batch = sdk.get_drowsiness_level()
-            if drowsiness is not None:
-                row["drowsiness"] = drowsiness
-                print(f"  Drowsiness: {drowsiness}")
+            try:
+                drowsiness, drowsiness_batch = sdk.get_drowsiness_level()
+                if drowsiness is not None:
+                    row["drowsiness"] = drowsiness
+                    print(f"  Drowsiness: {drowsiness}")
+            except AttributeError:
+                pass  # SDK not ready yet (warmup period)
 
             results.append(row)
 
