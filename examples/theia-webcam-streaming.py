@@ -24,7 +24,7 @@ import harmoneyes_theia
 # Configuration
 # ---------------------------------------------------------------------------
 
-LICENSE_KEY = ""
+LICENSE_KEY = "your-license-key-here"
 
 # Duration in seconds to collect data.
 # Fatigue updates every ~120s, so 400s captures at least 3 updates.
@@ -82,10 +82,6 @@ def main():
         platform="Webcam",
     )
 
-    # Point the webcam tracker at the bundled sidecar binary
-    webcam_binary = harmoneyes_theia.get_webcam_binary_path()
-    print(webcam_binary, flush=True)
-
     # Mental readiness normally requires 10 minutes; lower the gate for short sessions.
     sdk.set_mental_readiness_min_session_seconds(30)
 
@@ -99,10 +95,6 @@ def main():
 
     results = []
     start_time = time.time()
-    last_mw_batch = -1
-    last_fatigue_batch = -1
-    last_attention_label = None
-    last_mental_readiness_key = None
 
     print(f"Collecting data for {COLLECTION_DURATION}s — Ctrl+C to stop early\n")
 
@@ -120,65 +112,55 @@ def main():
                 "attention_label": None,
             }
 
-            # Mental workload predictions (updates every 5-second window)
+            parts = []
+
             try:
-                mw_levels, batch_num, lookahead = sdk.get_mental_workload_levels()
-                if mw_levels is not None and batch_num != last_mw_batch:
-                    last_mw_batch = batch_num
-                    prediction = next(iter(mw_levels.values()))
+                mw_levels, _, lookahead = sdk.get_mental_workload_levels()
+                if mw_levels is not None:
+                    prediction = next(iter(mw_levels.values()))["prediction"]
                     label = format_mental_workload(prediction)
                     row["mental_workload"] = prediction
                     row["mental_workload_label"] = label
-                    print(f"[{elapsed:5.1f}s] Mental Workload: {label}", end="")
+                    mw_str = f"MW={label}"
                     if lookahead is not None:
-                        print(f"  (lookahead: {lookahead:.3f})", end="")
-                    print()
+                        mw_str += f"({lookahead:.3f})"
+                    parts.append(mw_str)
             except AttributeError:
-                pass  # SDK not ready yet (warmup period)
+                pass
 
-            # Fatigue predictions (updates every ~120 seconds)
             try:
-                fatigue, fatigue_batch = sdk.get_fatigue_level()
-                if fatigue is not None and fatigue_batch != last_fatigue_batch:
-                    last_fatigue_batch = fatigue_batch
+                fatigue, _ = sdk.get_fatigue_level()
+                if fatigue is not None:
                     fatigue_value = next(iter(fatigue.values()))
                     fatigue_label = format_fatigue(fatigue_value)
                     row["fatigue"] = fatigue_value
                     row["fatigue_label"] = fatigue_label
-                    print(f"[{elapsed:5.1f}s] Fatigue: {fatigue_label}")
+                    parts.append(f"Fatigue={fatigue_label}")
             except AttributeError:
-                pass  # SDK not ready yet (warmup period)
+                pass
 
-            # Attention classification
             try:
                 attention = sdk.get_attention()
-                if attention is not None and attention.get("label") != last_attention_label:
-                    last_attention_label = attention["label"]
+                if attention is not None:
                     row["attention_level"] = attention["level"]
                     row["attention_label"] = attention["label"]
-                    print(f"[{elapsed:5.1f}s] Attention: level={attention['level']} ({attention['label']})")
+                    parts.append(f"Attention={attention['label']}(lvl {attention['level']})")
             except AttributeError:
-                pass  # SDK not ready yet (warmup period)
+                pass
 
-            # Mental readiness (requires sufficient session history)
             try:
                 mental_readiness = sdk.get_mental_readiness(elapsed_seconds=elapsed)
                 if mental_readiness is not None:
-                    mr_key = (
-                        mental_readiness["low_percentage"],
-                        mental_readiness["moderate_percentage"],
-                        mental_readiness["high_percentage"],
+                    parts.append(
+                        f"Readiness: lo={mental_readiness['low_percentage']:.1f}%"
+                        f" mod={mental_readiness['moderate_percentage']:.1f}%"
+                        f" hi={mental_readiness['high_percentage']:.1f}%"
                     )
-                    if mr_key != last_mental_readiness_key:
-                        last_mental_readiness_key = mr_key
-                        print(
-                            f"[{elapsed:5.1f}s] Mental Readiness:"
-                            f"  low={mental_readiness['low_percentage']:.1f}%"
-                            f"  moderate={mental_readiness['moderate_percentage']:.1f}%"
-                            f"  high={mental_readiness['high_percentage']:.1f}%"
-                        )
             except AttributeError:
-                pass  # SDK not ready yet (warmup period)
+                pass
+
+            status = "  |  ".join(parts) if parts else "(warming up...)"
+            print(f"[{elapsed:5.1f}s] {status}", flush=True)
 
             results.append(row)
             time.sleep(1.0)
