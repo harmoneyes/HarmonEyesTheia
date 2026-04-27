@@ -5,6 +5,8 @@ This package automatically detects your platform and loads the appropriate
 compiled binary for the Theia SDK.
 """
 
+import os
+import stat
 import sys
 import platform
 import importlib.util
@@ -115,6 +117,20 @@ _platform_name, _binary_filename = _get_platform_info()
 _bin_dir = Path(__file__).parent / "_bin"
 _binary_path = _bin_dir / _binary_filename
 
+# Resolve the platform-specific webcam sidecar binary
+_webcam_ext = ".exe" if _platform_name == "windows-x86_64" else ""
+_webcam_binary_path = _bin_dir / f"theia-webcam-{_platform_name}{_webcam_ext}"
+
+# Ensure the webcam binary is executable (wheel extraction does not guarantee this)
+if _webcam_binary_path.exists() and _platform_name != "windows-x86_64":
+    _current_mode = _webcam_binary_path.stat().st_mode
+    _exec_bits = stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+    if not (_current_mode & _exec_bits):
+        try:
+            os.chmod(_webcam_binary_path, _current_mode | _exec_bits)
+        except OSError:
+            pass
+
 try:
     _binary_module = _load_binary_module(_binary_path)
 except Exception as e:
@@ -137,6 +153,21 @@ for name in __all__:
 # Add version and platform info
 __version__ = "1.0.0"
 __platform__ = _platform_name
+
+
+def get_webcam_binary_path() -> Path:
+    """
+    Return the path to the platform-specific webcam sidecar binary.
+
+    Raises:
+        FileNotFoundError: If the webcam binary is not present in the installation
+    """
+    if not _webcam_binary_path.exists():
+        raise FileNotFoundError(
+            f"Webcam sidecar binary not found: {_webcam_binary_path}\n"
+            "Please ensure the package was installed correctly."
+        )
+    return _webcam_binary_path
 
 
 def get_platform_info() -> dict[str, str]:

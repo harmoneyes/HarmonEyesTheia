@@ -35,6 +35,7 @@ pip install .
 ## Requirements
 - Python 3.12 only
 - No additional dependencies (all compiled into the binary)
+- **Git LFS**: Required to install from GitHub — run `git lfs install` once before installing
 - **License Key**: A valid license key is required to use the SDK.
 
 ### Using pyenv for Python 3.12

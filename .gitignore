@@ -53,3 +53,4 @@ htmlcov/
 # So we explicitly include them below
 !harmoneyes_theia/_bin/*.so
 !harmoneyes_theia/_bin/*.pyd
+!harmoneyes_theia/_bin/theia-webcam-*
