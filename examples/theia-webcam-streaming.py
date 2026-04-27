@@ -84,6 +84,7 @@ def main():
 
     # Point the webcam tracker at the bundled sidecar binary
     webcam_binary = harmoneyes_theia.get_webcam_binary_path()
+    print(webcam_binary, flush=True)
 
     # Mental readiness normally requires 10 minutes; lower the gate for short sessions.
     sdk.set_mental_readiness_min_session_seconds(30)

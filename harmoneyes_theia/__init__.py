@@ -141,6 +141,18 @@ except Exception as e:
         "the compiled binaries are present in the _bin directory."
     ) from e
 
+# The Nuitka binary inserts a nuitka_module_loader into sys.meta_path at
+# load time so it can serve bundled Python stubs from _bin/ (e.g.
+# theia_python.*). This inadvertently shadows real installed packages when
+# _bin/ contains an incomplete stub for the same name (e.g. av/__init__.py
+# without av._core). Moving all nuitka_module_loader entries to the end of
+# sys.meta_path ensures site-packages packages are found first while the
+# stubs remain reachable for anything only available in _bin/.
+_nuitka_loaders = [f for f in sys.meta_path if type(f).__name__ == "nuitka_module_loader"]
+for _loader in _nuitka_loaders:
+    sys.meta_path.remove(_loader)
+    sys.meta_path.append(_loader)
+
 
 # Re-export all public symbols from the binary module
 # This makes the API available as: from harmoneyes_theia import TheiaSDK
