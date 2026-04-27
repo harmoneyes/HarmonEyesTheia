@@ -1,4 +1,5 @@
 # Include binary files in source distributions
 include harmoneyes_theia/_bin/*.so
 include harmoneyes_theia/_bin/*.pyd
+include harmoneyes_theia/_bin/theia-webcam-*
 include README.md
