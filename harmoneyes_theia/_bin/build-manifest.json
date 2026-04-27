@@ -1,0 +1,21 @@
+{
+  "git_sha": "ed804e90fc660da2eb90309d687b7db26bda84c8",
+  "git_ref": "refs/heads/main",
+  "build_date": "2026-04-27T20:35:57Z",
+  "workflow_run": "218",
+  "platforms": {
+    "linux": {
+      "sdk": "harmoneyes_theia-linux-x86_64.so",
+      "sidecar": "theia-webcam-linux-x86_64"
+    },
+    "macos": {
+      "sdk": "harmoneyes_theia-macos-arm64.so",
+      "sidecar": "theia-webcam-macos-arm64"
+    },
+    "windows": {
+      "sdk": "harmoneyes_theia-windows-x86_64.pyd",
+      "sidecar": "theia-webcam-windows-x86_64.exe"
+    }
+  },
+  "s3_path": "s3://harmoneyes-internal-builds/nuitka-builds/ed804e90fc660da2eb90309d687b7db26bda84c8/"
+}
