@@ -99,6 +99,49 @@ apt install portaudio19-dev
 
 See [`examples/theia-ganzin-streaming.py`](examples/theia-ganzin-streaming.py) for a full example.
 
+### Webcam
+
+The Webcam platform uses the device's built-in or attached USB webcam — no external eye tracker required.
+
+```python
+sdk = harmoneyes_theia.TheiaSDK(
+    license_key="your-license-key",
+    platform="Webcam",
+)
+```
+
+**Selecting which webcam to use**
+
+You do **not** need to set this — by default the SDK uses the system's built-in camera (`"0"`). Only set the `THEIA_CAMERA_DEVICE` environment variable if you want to override the default and pick a different camera. Set it before launching your script (or before constructing `TheiaSDK` in-process).
+
+| Platform | Backend | Value format | Example |
+|----------|---------|--------------|---------|
+| macOS    | avfoundation | numeric index | `"0"`, `"1"` |
+| Linux    | v4l2         | device path   | `"/dev/video0"` |
+| Windows  | dshow        | friendly name | `"Logitech BRIO"` |
+
+```bash
+# macOS / Linux
+export THEIA_CAMERA_DEVICE=1
+python theia-webcam-streaming.py
+```
+
+```powershell
+# Windows (PowerShell)
+$env:THEIA_CAMERA_DEVICE = "Logitech BRIO"
+python theia-webcam-streaming.py
+```
+
+**Discovering available cameras**
+
+| Platform | Command |
+|----------|---------|
+| macOS    | `ffmpeg -hide_banner -f avfoundation -list_devices true -i ""` |
+| Linux    | `v4l2-ctl --list-devices` (or `ls /dev/video*`) |
+| Windows  | `ffmpeg -hide_banner -f dshow -list_devices true -i dummy` |
+
+See [`examples/theia-webcam-streaming.py`](examples/theia-webcam-streaming.py) for a full example.
+
 ## License & Usage
 
 This software is proprietary and requires a valid license key to operate. The compiled binaries are publicly distributed but will not function without proper licensing credentials.
