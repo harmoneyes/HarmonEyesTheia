@@ -10,6 +10,32 @@ Prerequisites:
 
 Usage:
   python theia-webcam-streaming.py
+
+Selecting which webcam to use
+-----------------------------
+You do NOT need to set this — by default the SDK uses the system's built-in
+camera ("0"). Only set THEIA_CAMERA_DEVICE if you want to override the
+default and pick a different camera. Set it before launching this script
+(or before constructing TheiaSDK in-process).
+
+Platform-specific values:
+  macOS   (avfoundation): numeric index, e.g. "0", "1"
+  Linux   (v4l2):         device path,   e.g. "/dev/video0"
+  Windows (dshow):        friendly name, e.g. "Logitech BRIO"
+
+Examples:
+  macOS / Linux:
+    export THEIA_CAMERA_DEVICE=1
+    python theia-webcam-streaming.py
+
+  Windows (PowerShell):
+    $env:THEIA_CAMERA_DEVICE = "Logitech BRIO"
+    python theia-webcam-streaming.py
+
+Discovering available cameras on your system:
+  macOS:    ffmpeg -hide_banner -f avfoundation -list_devices true -i ""
+  Linux:    v4l2-ctl --list-devices        (or: ls /dev/video*)
+  Windows:  ffmpeg -hide_banner -f dshow   -list_devices true -i dummy
 """
 
 import csv
