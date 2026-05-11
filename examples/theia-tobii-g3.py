@@ -88,7 +88,6 @@ def run_batch(tsv_df: pd.DataFrame) -> pd.DataFrame:
         "drowsiness_level",
     ]
     display_cols = [c for c in display_cols if c in result.columns]
-    print(results, flush=True)
     print(f"\n  First 10 rows:")
     print(result[display_cols].head(10).to_string(index=False))
 
