@@ -22,6 +22,7 @@ Usage:
 
 import argparse
 import sys
+import threading
 import time
 import uuid
 from collections import Counter
@@ -113,6 +114,30 @@ def run_streaming(tsv_df: pd.DataFrame, max_et_rows: int | None) -> list[dict]:
         platform="WT",
     )
 
+    predictions: list[dict] = []
+    lock = threading.Lock()
+
+    def on_batch(batch_counter: int) -> None:
+        # Called from the SDK's processing thread on every completed batch window.
+        # Capture both predictions immediately so none are overwritten between polls.
+        mw_levels = None
+        fatigue = None
+        try:
+            mw_levels, _, _ = sdk.get_mental_workload_levels()
+        except Exception:
+            pass
+        try:
+            fatigue, _ = sdk.get_fatigue_level()
+        except Exception:
+            pass
+        with lock:
+            predictions.append({
+                "batch": batch_counter,
+                "mental_workload": dict(mw_levels) if mw_levels else None,
+                "fatigue": fatigue,
+            })
+
+    sdk.set_sdk_row_callback(on_batch)
     sdk.start_new_session(session_uuid=str(uuid.uuid4()))
     sdk.start_tobii_g3_stream(sample_rate=50)
 
@@ -121,40 +146,22 @@ def run_streaming(tsv_df: pd.DataFrame, max_et_rows: int | None) -> list[dict]:
         sdk.push_tobii_g3_chunk(et_rows.iloc[i : i + 1])
     print(f"  All rows pushed in {time.perf_counter() - t0:.2f}s — waiting for processing loop to drain...")
 
-    # Poll for predictions until none arrive for 5 consecutive seconds.
-    # get_mental_workload_levels() returns the latest prediction and clears it,
-    # so each non-None result is a newly completed processing window.
-    predictions: list[dict] = []
+    # Wait until the prediction count has been stable for 5 consecutive seconds.
+    prev_count = -1
     stable = 0
     for _ in range(120):
         time.sleep(1)
-
-        mw_levels = None
-        fatigue = None
-
-        try:
-            mw_levels, batch_num, _ = sdk.get_mental_workload_levels()
-        except Exception:
-            batch_num = None
-
-        try:
-            fatigue, _ = sdk.get_fatigue_level()
-        except Exception:
-            pass
-
-        if mw_levels is not None or fatigue is not None:
-            predictions.append({
-                "batch": batch_num,
-                "mental_workload": dict(mw_levels) if mw_levels else None,
-                "fatigue": fatigue,
-            })
-            sys.stdout.write(f"\r  {len(predictions)} predictions received...")
-            sys.stdout.flush()
-            stable = 0
-        else:
+        with lock:
+            count = len(predictions)
+        sys.stdout.write(f"\r  {count} batches processed...")
+        sys.stdout.flush()
+        if count == prev_count:
             stable += 1
             if stable >= 5:
                 break
+        else:
+            stable = 0
+        prev_count = count
 
     sdk.stop_processing()
     print()
