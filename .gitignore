@@ -2,8 +2,6 @@
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
-*.pyd
 .Python
 build/
 develop-eggs/
@@ -22,6 +20,8 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+*.so
+*.pyd
 
 # Virtual environments
 .venv/
@@ -49,8 +49,12 @@ htmlcov/
 # Distribution
 *.whl
 
-# Note: We DO want to track the binaries in _bin/
-# So we explicitly include them below
-!harmoneyes_theia/_bin/*.so
-!harmoneyes_theia/_bin/*.pyd
-!harmoneyes_theia/_bin/theia-webcam-*
+# ---------------------------------------------------------------------------
+# Vendored compiled SDK (produced by theia-native release CI — see VENDORING.md)
+# Fully compiled (Nuitka wrapper + pybind11 core), kept under vendor/ and
+# intentionally committed so `pip install git+https://…` works with no build
+# step. Re-include the compiled artifacts under vendor/ that the patterns above
+# ignore (`*.so`/`*.pyd`).
+# ---------------------------------------------------------------------------
+!vendor/
+!vendor/**

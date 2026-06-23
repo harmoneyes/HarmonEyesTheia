@@ -1,41 +1,31 @@
 """
 Webcam — HarmonEyes Theia SDK Example
 
-Uses the device webcam to stream gaze data and prints real-time
-mental workload, fatigue, attention, and mental readiness predictions.
+Streams gaze samples through the SDK and prints real-time mental workload,
+fatigue, attention, and mental readiness predictions.
+
+IMPORTANT — the SDK does not open a camera for you
+--------------------------------------------------
+On the native SDK, the Webcam platform consumes gaze samples that *your
+application* supplies. You must inject a gaze source via
+``sdk.tracker.set_tracker(...)`` before calling ``start_realtime_data()``.
+
+A gaze source is any object exposing:
+  - ``start_realtime_streaming()``  -> begins producing samples
+  - ``get_buffered_data()``         -> returns a list of sample dicts
+                                       ({"timestamp": <ms>, "leftEyeX": ...})
+  - ``is_connected()`` / ``close()``
+
+This example uses a placeholder source (`_YourGazeSource`) that yields no
+data — replace it with your real webcam-tracker integration. Without a real
+source, the prediction loop will simply report "warming up...".
 
 Prerequisites:
   1. Set your license key below.
-  2. Ensure your webcam is accessible.
+  2. Replace `_YourGazeSource` with a real gaze source.
 
 Usage:
   python theia-webcam-streaming.py
-
-Selecting which webcam to use
------------------------------
-You do NOT need to set this — by default the SDK uses the system's built-in
-camera ("0"). Only set THEIA_CAMERA_DEVICE if you want to override the
-default and pick a different camera. Set it before launching this script
-(or before constructing TheiaSDK in-process).
-
-Platform-specific values:
-  macOS   (avfoundation): numeric index, e.g. "0", "1"
-  Linux   (v4l2):         device path,   e.g. "/dev/video0"
-  Windows (dshow):        friendly name, e.g. "Logitech BRIO"
-
-Examples:
-  macOS / Linux:
-    export THEIA_CAMERA_DEVICE=1
-    python theia-webcam-streaming.py
-
-  Windows (PowerShell):
-    $env:THEIA_CAMERA_DEVICE = "Logitech BRIO"
-    python theia-webcam-streaming.py
-
-Discovering available cameras on your system:
-  macOS:    ffmpeg -hide_banner -f avfoundation -list_devices true -i ""
-  Linux:    v4l2-ctl --list-devices        (or: ls /dev/video*)
-  Windows:  ffmpeg -hide_banner -f dshow   -list_devices true -i dummy
 """
 
 import csv
@@ -102,11 +92,36 @@ def save_results_to_csv(results: list[dict], session_id: str) -> str:
 # Main
 # ---------------------------------------------------------------------------
 
+class _YourGazeSource:
+    """Placeholder gaze source — REPLACE with your real webcam-tracker.
+
+    Must yield sample dicts from get_buffered_data(); this stub yields none.
+    """
+
+    streaming = True
+    device = True
+
+    def start_realtime_streaming(self):
+        return True
+
+    def get_buffered_data(self):
+        return []   # <-- your integration returns gaze sample dicts here
+
+    def is_connected(self):
+        return True
+
+    def close(self):
+        pass
+
+
 def main():
     sdk = harmoneyes_theia.TheiaSDK(
         license_key=LICENSE_KEY,
         platform="Webcam",
     )
+
+    # Inject the gaze source. The SDK does not capture from a camera itself.
+    sdk.tracker.set_tracker(_YourGazeSource())
 
     # Mental readiness normally requires 10 minutes; lower the gate for short sessions.
     sdk.set_mental_readiness_min_session_seconds(30)

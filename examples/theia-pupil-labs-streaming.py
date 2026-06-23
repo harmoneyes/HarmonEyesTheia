@@ -97,8 +97,10 @@ def main():
             # Mental workload predictions (updates every 5-second window)
             try:
                 mw_levels, batch_num, _ = sdk.get_mental_workload_levels()
-                if mw_levels is not None:
-                    prediction = mw_levels["cog-load-general-smoothed"]["prediction"]
+                if mw_levels:
+                    # levels is keyed by model name ("general" / "hierarchical");
+                    # take whichever model produced this window.
+                    prediction = next(iter(mw_levels.values()))["prediction"]
                     row["mental_workload"] = prediction
                     row["mental_workload_label"] = format_mental_workload(prediction)
                     print(f"  Mental Workload: {format_mental_workload(prediction)}")

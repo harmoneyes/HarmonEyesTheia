@@ -1,17 +1,21 @@
 [project]
 name = "harmoneyes-theia"
+# Native-SDK era. Bumped to 2.x to supersede the old Nuitka 1.x builds (pip
+# treats higher versions as upgrades — must stay > the last 1.x release). The
+# release pipeline overwrites this with the theia-native package version at
+# vendor time; see VENDORING.md.
 version = "1.0.0"
-description = "HarmonEyes Theia SDK - Eye tracking, cognitive load, and sleepiness detection"
+description = "HarmonEyes Theia SDK"
 readme = "README.md"
 requires-python = ">=3.12, <3.13"
-license = {text = "Proprietary"}
+license = { text = "Proprietary" }
 authors = [
-    {name = "RightEye LLC / HarmonEyes", email = "support@harmoneyes.com"}
+    { name = "RightEye LLC / HarmonEyes", email = "support@harmoneyes.com" },
 ]
 keywords = ["eye-tracking", "cognitive-load", "drowsiness", "pupil-labs", "ganzin"]
 
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "Programming Language :: Python :: 3",
@@ -20,75 +24,17 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
-# All dependencies needed by the compiled SDK
+# The native SDK statically links its heavy C/C++ dependencies (libcurl,
+# OpenSSL, XGBoost) into the compiled extension and bundles them via
+# auditwheel/delocate/delvewheel, so the Python runtime footprint is small.
 dependencies = [
-    # Core theia-python dependencies
-    "cryptography>=42.0.0",
-    "python-dotenv>=0.9.9",
-    "requests>=2.32.5",
-    "urllib3>=2.6.3",
-
-    # Machine learning and data processing (sdk-features, sdk-modeling)
-    "pandas==2.3.3",
-    "numpy>=1.26.0,<2.2.0",
-    "scikit-learn==1.6.1",
-    "xgboost==3.1.2",
-    "imbalanced-learn==0.14.0",
-    "PyWavelets==1.9.0",
-
-    # Video and image processing (pupil-labs, ganzin)
-    "opencv-python>=4.5.0",
-    "av>=15.0.0",
-
-    # Audio processing (ganzin)
-    "pyaudio>=0.2.14",
-
-    # Networking and async (pupil-labs, ganzin)
-    "aiohttp>=3.12.14",
-    "aiodns>=3.5.0",
-    "aiohappyeyeballs>=2.6.1",
-    "aiortsp>=1.4.0",
-    "aiosignal>=1.4.0",
-    "websockets>=15.0.1",
-
-    # Pupil Labs specific dependencies
-    "pupil-labs-neon-recording>=1.0.3",
-    "pupil-labs-realtime-api>=1.6.2",
-    "pupil-labs-video>=1.0.6",
-    "zeroconf>=0.147.0",
-
-    # Protocol buffers and serialization
-    "protobuf>=4.25.8",
-
-    # Utilities
-    "attrs>=25.3.0",
-    "Brotli>=1.1.0",
-    "cffi>=1.17.1",
-    "Deprecated>=1.2.18",
-    "dpkt>=1.9.8",
-    "frozenlist>=1.7.0",
-    "fsspec>=2025.7.0",
-    "idna>=3.10",
-    "ifaddr>=0.2.0",
-    "multidict>=6.6.3",
-    "propcache>=0.3.2",
-    "pycares>=4.9.0",
-    "pycparser>=2.22",
-    "pydantic>=2.11.7",
-    "pydantic_core>=2.33.2",
-    "python-dateutil>=2.9.0",
-    "python-yakh>=0.4.1",
-    "pytz>=2025.2",
-    "PyYAML>=6.0.2",
-    "rich==13.5.3",
-    "six>=1.17.0",
-    "typing-inspection>=0.4.1",
-    "typing_extensions>=4.14.1",
-    "tzdata>=2025.2",
-    "universal_pathlib>=0.2.6",
-    "wrapt>=1.17.2",
-    "yarl>=1.20.1",
+    "numpy>=1.20",
+    "pandas>=1.5",
 ]
+
+[project.optional-dependencies]
+# Only needed for MP4 replay via DefaultTrackerVideo (cv2 is imported lazily).
+video = ["opencv-python>=4.5.0"]
 
 [project.urls]
 Homepage = "https://harmoneyes.com"
@@ -100,16 +46,31 @@ Documentation = "https://github.com/harmoneyes/HarmonEyesTheia#readme"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+# ---------------------------------------------------------------------------
+# Packaging the vendored native SDK
+#
+# This repo holds NO source — only the fully-compiled (Nuitka + pybind11) output
+# of theia-native, dropped in by the release pipeline under vendor/ to keep the
+# repo root clean (see VENDORING.md). vendor/ contains:
+#
+#   harmoneyes_theia.<abi>.so / .pyd   Nuitka-compiled wrapper package
+#   ace.<abi>.so / .pyd                Nuitka-compiled ace package
+#   harmoneyes_theia/                  data dir on the wrapper's __path__:
+#       _theia_native.<abi>.so / .pyd    pybind11 C++ core
+#       models/…                         ML model data
+#       .dylibs/…                        repaired native deps (macOS/delocate)
+#   harmoneyes_theia.libs/             repaired native deps (linux/win)
+#
+# force-include maps vendor/ → the wheel root, so the INSTALLED layout is the
+# normal top-level package (`import harmoneyes_theia` works) while the repo keeps
+# everything tidy under vendor/. bypass-selection: there are no `packages` — the
+# force-include below is the entire wheel payload. No `.py`/`.pyc` ships.
+# ---------------------------------------------------------------------------
 [tool.hatch.build.targets.wheel]
-packages = ["harmoneyes_theia"]
+bypass-selection = true
 
-# The binaries under _bin/ are git-tracked (see the negated patterns in
-# .gitignore), so they are included by normal package inclusion. We use
-# `artifacts` to make sure the *.so/*.pyd files — which match the global
-# *.so/*.pyd ignore patterns — are also picked up. A previous force-include
-# of the whole _bin/ directory double-added every file and newer hatchling
-# versions reject that as a duplicate wheel path.
-artifacts = [
-    "harmoneyes_theia/_bin/*.so",
-    "harmoneyes_theia/_bin/*.pyd",
-]
+[tool.hatch.build.targets.wheel.force-include]
+"vendor" = "/"
+
+[tool.hatch.build.targets.sdist]
+include = ["vendor", "README.md"]
