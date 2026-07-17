@@ -105,25 +105,23 @@ See [`examples/theia-pupil-labs-batch.py`](examples/theia-pupil-labs-batch.py).
 
 ### Tobii Pro Glasses 3
 
-Process a recorded Tobii G3 export, or stream pushed chunks live:
+Tobii G3 is **post-recorded batch data only** — there is no real-time/streaming
+API. Load a full Tobii Pro Lab export (TSV) and process it in one call through
+the SDK's ACE pipeline:
 
 ```python
 import pandas as pd
 import harmoneyes_theia
 
-# Batch — a full export → per-second predictions
 sdk = harmoneyes_theia.TheiaSDK(license_key="your-license-key", platform="TobiiG3")
-df = pd.read_csv("recording.tsv", sep="\t")
-result = sdk.process_tobii_g3_data(df)   # mental_workload + drowsiness per second
-
-# Streaming — push chunks, poll predictions (also yields attention + readiness)
-sdk.start_new_session(session_uuid)
-sdk.start_tobii_g3_stream(sample_rate=50)
-sdk.push_tobii_g3_chunk(chunk_df)
+df = pd.read_csv("recording.tsv", sep="\t", low_memory=False)
+result = sdk.process_tobii_g3_data(df)   # per-second predictions DataFrame
 ```
 
-> Batch returns mental workload + drowsiness; attention and mental-readiness are
-> produced by the streaming path. See [`examples/theia-tobii-g3.py`](examples/theia-tobii-g3.py).
+`result` has one row per ACE window (~1 Hz after warmup) with columns:
+`timestamp_s`, `cog_load_level` (0/1/2) + `cog_load_label` + `cog_load_confidence`,
+and `drowsiness_level` (0–3) + `drowsiness_label` + `drowsiness_confidence`. See
+[`examples/theia-tobii-g3.py`](examples/theia-tobii-g3.py).
 
 ### Webcam
 

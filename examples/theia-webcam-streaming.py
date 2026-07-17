@@ -1,8 +1,8 @@
 """
 Webcam — HarmonEyes Theia SDK Example
 
-Streams gaze samples through the SDK and prints real-time mental workload,
-fatigue, attention, and mental readiness predictions.
+Streams gaze samples through the SDK and prints real-time cognitive load,
+drowsiness, attention, and mental readiness predictions.
 
 IMPORTANT — the SDK does not open a camera for you
 --------------------------------------------------
@@ -50,20 +50,20 @@ COLLECTION_DURATION = 400
 # Helpers
 # ---------------------------------------------------------------------------
 
-MW_LABELS = {0: "Low", 1: "Moderate", 2: "High"}
-FATIGUE_LABELS = {0: "Alert", 1: "Mild", 2: "Moderate", 3: "Drowsy"}
+COG_LOAD_LABELS = {0: "Low", 1: "Moderate", 2: "High"}
+DROWSINESS_LABELS = {0: "Alert", 1: "Mild", 2: "Moderate", 3: "Drowsy"}
 
 OUTPUT_DIR = "results"
 
 
-def format_mental_workload(prediction: int) -> str:
-    """Map a numeric mental workload prediction to a human-readable label."""
-    return MW_LABELS.get(prediction, f"Unknown ({prediction})")
+def format_cog_load(prediction: int) -> str:
+    """Map a numeric cognitive load prediction to a human-readable label."""
+    return COG_LOAD_LABELS.get(prediction, f"Unknown ({prediction})")
 
 
-def format_fatigue(level: int) -> str:
-    """Map a numeric fatigue level to a human-readable label."""
-    return FATIGUE_LABELS.get(level, f"Unknown ({level})")
+def format_drowsiness(level: int) -> str:
+    """Map a numeric drowsiness level to a human-readable label."""
+    return DROWSINESS_LABELS.get(level, f"Unknown ({level})")
 
 
 def save_results_to_csv(results: list[dict], session_id: str) -> str:
@@ -75,8 +75,8 @@ def save_results_to_csv(results: list[dict], session_id: str) -> str:
 
     fieldnames = [
         "timestamp", "elapsed_s",
-        "mental_workload", "mental_workload_label",
-        "fatigue", "fatigue_label",
+        "cog_load", "cog_load_label",
+        "drowsiness", "drowsiness_label",
         "attention_level", "attention_label",
     ]
     with open(filepath, "w", newline="") as f:
@@ -124,7 +124,7 @@ def main():
     sdk.tracker.set_tracker(_YourGazeSource())
 
     # Mental readiness normally requires 10 minutes; lower the gate for short sessions.
-    sdk.set_mental_readiness_min_session_seconds(30)
+    sdk.set_mental_fatigue_min_session_seconds(30)
 
     session_id = str(uuid.uuid4())
 
@@ -145,10 +145,10 @@ def main():
             row = {
                 "timestamp": datetime.now().isoformat(),
                 "elapsed_s": round(elapsed, 2),
-                "mental_workload": None,
-                "mental_workload_label": None,
-                "fatigue": None,
-                "fatigue_label": None,
+                "cog_load": None,
+                "cog_load_label": None,
+                "drowsiness": None,
+                "drowsiness_label": None,
                 "attention_level": None,
                 "attention_label": None,
             }
@@ -156,32 +156,32 @@ def main():
             parts = []
 
             try:
-                mw_levels, _, lookahead = sdk.get_mental_workload_levels()
-                if mw_levels is not None:
-                    prediction = next(iter(mw_levels.values()))["prediction"]
-                    label = format_mental_workload(prediction)
-                    row["mental_workload"] = prediction
-                    row["mental_workload_label"] = label
-                    mw_str = f"MW={label}"
+                cog_levels, _, lookahead = sdk.get_cog_load_levels()
+                if cog_levels is not None:
+                    prediction = next(iter(cog_levels.values()))["prediction"]
+                    label = format_cog_load(prediction)
+                    row["cog_load"] = prediction
+                    row["cog_load_label"] = label
+                    cog_str = f"CogLoad={label}"
                     if lookahead is not None:
-                        mw_str += f"({lookahead:.3f})"
-                    parts.append(mw_str)
+                        cog_str += f"({lookahead:.3f})"
+                    parts.append(cog_str)
             except AttributeError:
                 pass
 
             try:
-                fatigue, _ = sdk.get_fatigue_level()
-                if fatigue is not None:
-                    fatigue_value = next(iter(fatigue.values()))
-                    fatigue_label = format_fatigue(fatigue_value)
-                    row["fatigue"] = fatigue_value
-                    row["fatigue_label"] = fatigue_label
-                    parts.append(f"Fatigue={fatigue_label}")
+                drowsiness, _ = sdk.get_drowsiness_level()
+                if drowsiness is not None:
+                    drowsiness_value = next(iter(drowsiness.values()))
+                    drowsiness_label = format_drowsiness(drowsiness_value)
+                    row["drowsiness"] = drowsiness_value
+                    row["drowsiness_label"] = drowsiness_label
+                    parts.append(f"Drowsiness={drowsiness_label}")
             except AttributeError:
                 pass
 
             try:
-                attention = sdk.get_attention()
+                attention = sdk.get_attention_style()
                 if attention is not None:
                     row["attention_level"] = attention["level"]
                     row["attention_label"] = attention["label"]
@@ -190,7 +190,7 @@ def main():
                 pass
 
             try:
-                mental_readiness = sdk.get_mental_readiness(elapsed_seconds=elapsed)
+                mental_readiness = sdk.get_mental_fatigue(elapsed_seconds=elapsed)
                 if mental_readiness is not None:
                     parts.append(
                         f"Readiness: lo={mental_readiness['low_percentage']:.1f}%"

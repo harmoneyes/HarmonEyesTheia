@@ -2,7 +2,7 @@
 Ganzin Sol — HarmonEyes Theia SDK Example
 
 Connects to a Ganzin Sol eye tracker over the network, streams gaze data,
-and prints real-time mental workload and fatigue predictions.
+and prints real-time cognitive load and drowsiness predictions.
 
 Prerequisites:
   1. Set your license key below:
@@ -48,8 +48,8 @@ COG_LOAD_LABELS = {0: "Low", 1: "Moderate", 2: "High"}
 OUTPUT_DIR = "results"
 
 
-def format_mental_workload(prediction: int) -> str:
-    """Map a numeric mental workload prediction to a human-readable label."""
+def format_cog_load(prediction: int) -> str:
+    """Map a numeric cognitive load prediction to a human-readable label."""
     return COG_LOAD_LABELS.get(prediction, f"Unknown ({prediction})")
 
 
@@ -60,7 +60,7 @@ def save_results_to_csv(results: list[dict], session_id: str) -> str:
     filename = f"ganzin_session_{timestamp}_{session_id[:8]}.csv"
     filepath = os.path.join(OUTPUT_DIR, filename)
 
-    fieldnames = ["timestamp", "elapsed_s", "mental_workload", "mental_workload_label", "fatigue"]
+    fieldnames = ["timestamp", "elapsed_s", "cog_load", "cog_load_label", "drowsiness"]
     with open(filepath, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
@@ -99,30 +99,30 @@ def main():
             row = {
                 "timestamp": datetime.now().isoformat(),
                 "elapsed_s": round(elapsed, 2),
-                "mental_workload": None,
-                "mental_workload_label": None,
-                "fatigue": None,
+                "cog_load": None,
+                "cog_load_label": None,
+                "drowsiness": None,
             }
 
-            # Mental workload predictions (updates every 5-second window)
+            # Cognitive load predictions (updates every 5-second window)
             try:
-                mw_levels, batch_num, _ = sdk.get_mental_workload_levels()
-                if mw_levels:
+                cog_levels, batch_num, _ = sdk.get_cog_load_levels()
+                if cog_levels:
                     # levels is keyed by model name ("general" / "hierarchical");
                     # take whichever model produced this window.
-                    prediction = next(iter(mw_levels.values()))["prediction"]
-                    row["mental_workload"] = prediction
-                    row["mental_workload_label"] = format_mental_workload(prediction)
-                    print(f"  Mental Workload: {format_mental_workload(prediction)}")
+                    prediction = next(iter(cog_levels.values()))["prediction"]
+                    row["cog_load"] = prediction
+                    row["cog_load_label"] = format_cog_load(prediction)
+                    print(f"  Cognitive Load: {format_cog_load(prediction)}")
             except AttributeError:
                 pass  # SDK not ready yet (warmup period)
 
-            # Fatigue predictions (updates every ~120 seconds)
+            # Drowsiness predictions (updates every ~120 seconds)
             try:
-                fatigue, fatigue_batch = sdk.get_fatigue_level()
-                if fatigue is not None:
-                    row["fatigue"] = fatigue
-                    print(f"  Fatigue: {fatigue}")
+                drowsiness, drowsiness_batch = sdk.get_drowsiness_level()
+                if drowsiness is not None:
+                    row["drowsiness"] = drowsiness
+                    print(f"  Drowsiness: {drowsiness}")
             except AttributeError:
                 pass  # SDK not ready yet (warmup period)
 
