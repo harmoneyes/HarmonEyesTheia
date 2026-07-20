@@ -1,30 +1,27 @@
 """
-Webcam — HarmonEyes Theia SDK Example
+Webcam (Tobii Nexus) — HarmonEyes Theia SDK Example
 
-Streams gaze samples through the SDK and prints real-time cognitive load,
-drowsiness, attention, and mental readiness predictions.
+Turns on your webcam, estimates gaze with the bundled Tobii Nexus engine, and
+prints real-time cognitive load, drowsiness, attention, and mental readiness.
 
-IMPORTANT — the SDK does not open a camera for you
---------------------------------------------------
-On the native SDK, the Webcam platform consumes gaze samples that *your
-application* supplies. You must inject a gaze source via
-``sdk.tracker.set_tracker(...)`` before calling ``start_realtime_data()``.
+How it works
+------------
+The Webcam platform consumes gaze samples; the gaze itself is produced by a
+small Node sidecar (bundled with this package) that hosts the Tobii Nexus engine
+and captures your camera. ``NexusWebcamTracker`` spawns that sidecar and feeds
+its gaze into the SDK — you just inject it via ``sdk.tracker.set_tracker(...)``.
 
-A gaze source is any object exposing:
-  - ``start_realtime_streaming()``  -> begins producing samples
-  - ``get_buffered_data()``         -> returns a list of sample dicts
-                                       ({"timestamp": <ms>, "leftEyeX": ...})
-  - ``is_connected()`` / ``close()``
-
-This example uses a placeholder source (`_YourGazeSource`) that yields no
-data — replace it with your real webcam-tracker integration. Without a real
-source, the prediction loop will simply report "warming up...".
-
-Prerequisites:
-  1. Set your license key below.
-  2. Replace `_YourGazeSource` with a real gaze source.
+Requirements
+------------
+  * A valid license key (set ``THEIA_LICENSE_KEY`` or edit below).
+  * **Node.js 20+** on your PATH (the gaze sidecar runs on Node).
+  * A reachable Tobii Nexus license endpoint — set ``TOBII_LICENSE_URL`` (or
+    ``FASTAPI_URL``) to your signing server.
+  * A connected webcam.
 
 Usage:
+  export THEIA_LICENSE_KEY=...      # SDK license
+  export TOBII_LICENSE_URL=...      # Tobii Nexus signing endpoint
   python theia-webcam-streaming.py
 """
 
@@ -40,7 +37,7 @@ import harmoneyes_theia
 # Configuration
 # ---------------------------------------------------------------------------
 
-LICENSE_KEY = "your-license-key-here"
+LICENSE_KEY = os.environ.get("THEIA_LICENSE_KEY", "your-license-key-here")
 
 # Duration in seconds to collect data.
 # Fatigue updates every ~120s, so 400s captures at least 3 updates.
@@ -74,10 +71,14 @@ def save_results_to_csv(results: list[dict], session_id: str) -> str:
     filepath = os.path.join(OUTPUT_DIR, filename)
 
     fieldnames = [
-        "timestamp", "elapsed_s",
-        "cog_load", "cog_load_label",
-        "drowsiness", "drowsiness_label",
-        "attention_level", "attention_label",
+        "timestamp",
+        "elapsed_s",
+        "cog_load",
+        "cog_load_label",
+        "drowsiness",
+        "drowsiness_label",
+        "attention_level",
+        "attention_label",
     ]
     with open(filepath, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -92,27 +93,6 @@ def save_results_to_csv(results: list[dict], session_id: str) -> str:
 # Main
 # ---------------------------------------------------------------------------
 
-class _YourGazeSource:
-    """Placeholder gaze source — REPLACE with your real webcam-tracker.
-
-    Must yield sample dicts from get_buffered_data(); this stub yields none.
-    """
-
-    streaming = True
-    device = True
-
-    def start_realtime_streaming(self):
-        return True
-
-    def get_buffered_data(self):
-        return []   # <-- your integration returns gaze sample dicts here
-
-    def is_connected(self):
-        return True
-
-    def close(self):
-        pass
-
 
 def main():
     sdk = harmoneyes_theia.TheiaSDK(
@@ -120,8 +100,9 @@ def main():
         platform="Webcam",
     )
 
-    # Inject the gaze source. The SDK does not capture from a camera itself.
-    sdk.tracker.set_tracker(_YourGazeSource())
+    # Inject the Tobii Nexus webcam gaze source. Spawning it (below, on
+    # start_realtime_data) opens the camera and starts the Node gaze sidecar.
+    sdk.tracker.set_tracker(harmoneyes_theia.NexusWebcamTracker())
 
     # Mental readiness normally requires 10 minutes; lower the gate for short sessions.
     sdk.set_mental_fatigue_min_session_seconds(30)
@@ -131,7 +112,7 @@ def main():
     print(f"[TheiaSDK] Starting session {session_id}")
     sdk.start_new_session(session_uuid=session_id)
 
-    print("[TheiaSDK] Starting data stream")
+    print("[TheiaSDK] Starting webcam + gaze sidecar")
     sdk.start_realtime_data()
 
     results = []
@@ -185,7 +166,9 @@ def main():
                 if attention is not None:
                     row["attention_level"] = attention["level"]
                     row["attention_label"] = attention["label"]
-                    parts.append(f"Attention={attention['label']}(lvl {attention['level']})")
+                    parts.append(
+                        f"Attention={attention['label']}(lvl {attention['level']})"
+                    )
             except AttributeError:
                 pass
 

@@ -36,7 +36,7 @@ COLLECTION_DURATION = 400
 # License setup
 # ---------------------------------------------------------------------------
 
-LICENSE_KEY = "your-license-key"
+LICENSE_KEY = os.environ.get("THEIA_LICENSE_KEY", "your-license-key")
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -73,6 +73,7 @@ def save_results_to_csv(results: list[dict], session_id: str) -> str:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main():
     # Initialize the SDK with the Ganzin Sol platform

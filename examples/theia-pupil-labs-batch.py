@@ -27,11 +27,10 @@ SCENE_CAMERA_JSON = "scene_camera.json"
 
 
 def _create_sdk() -> harmoneyes_theia.TheiaSDK:
-    """Create and return a configured TheiaSDK instance.
-    """
+    """Create and return a configured TheiaSDK instance."""
     import os
 
-    license_key = "your-license-key-here"
+    license_key = os.environ.get("THEIA_LICENSE_KEY", "your-license-key-here")
 
     return harmoneyes_theia.TheiaSDK(
         license_key=license_key,
@@ -90,7 +89,9 @@ def test_predict_cog_load_batch() -> bool:
         first = results[0]
         required_keys = {"timestamp", "value", "label", "confidence"}
         if not required_keys.issubset(first.keys()):
-            print(f"  ERROR: Missing keys. Expected {required_keys}, got {set(first.keys())}")
+            print(
+                f"  ERROR: Missing keys. Expected {required_keys}, got {set(first.keys())}"
+            )
             return False
 
         # Validate value ranges
@@ -98,11 +99,13 @@ def test_predict_cog_load_batch() -> bool:
             print(f"  ERROR: value={first['value']} out of expected range 0-2")
             return False
         if not (0.0 <= first["confidence"] <= 1.0):
-            print(f"  ERROR: confidence={first['confidence']} out of expected range 0.0-1.0")
+            print(
+                f"  ERROR: confidence={first['confidence']} out of expected range 0.0-1.0"
+            )
             return False
 
         # Display first result
-        print(f"\n  First result:")
+        print("\n  First result:")
         print(f"    timestamp:  {first['timestamp']}")
         print(f"    label:      {first['label']}")
         print(f"    value:      {first['value']}")
@@ -112,7 +115,9 @@ def test_predict_cog_load_batch() -> bool:
         print("\n  Sample predictions (evenly spaced):")
         for i in [0, len(results) // 4, len(results) // 2, -1]:
             r = results[i]
-            print(f"    t={r['timestamp']:6.1f}s  label={r['label']}  conf={r['confidence']:.3f}")
+            print(
+                f"    t={r['timestamp']:6.1f}s  label={r['label']}  conf={r['confidence']:.3f}"
+            )
 
         print("\nPASSED: predict_cog_load_batch()")
         return True
@@ -174,7 +179,9 @@ def test_predict_drowsiness_batch() -> bool:
         first = results[0]
         required_keys = {"timestamp", "value", "label", "confidence"}
         if not required_keys.issubset(first.keys()):
-            print(f"  ERROR: Missing keys. Expected {required_keys}, got {set(first.keys())}")
+            print(
+                f"  ERROR: Missing keys. Expected {required_keys}, got {set(first.keys())}"
+            )
             return False
 
         if not (0 <= first["value"] <= 3):
@@ -214,7 +221,7 @@ def test_batch_api_with_dataframe() -> bool:
 
         # Use a small subset for faster execution
         df_subset = df.head(10_000)
-        print(f"  Using first 10,000 rows (50 seconds at 200 Hz)")
+        print("  Using first 10,000 rows (50 seconds at 200 Hz)")
 
         print("\nRunning predict_cog_load_batch() with DataFrame input...")
         results = sdk.predict_cog_load_batch(
@@ -229,7 +236,9 @@ def test_batch_api_with_dataframe() -> bool:
         if len(results) > 0:
             print("\n  First 5 predictions:")
             for r in results[:5]:
-                print(f"    t={r['timestamp']:6.1f}s  label={r['label']}  conf={r['confidence']:.3f}")
+                print(
+                    f"    t={r['timestamp']:6.1f}s  label={r['label']}  conf={r['confidence']:.3f}"
+                )
 
         print("\nPASSED: predict_cog_load_batch() with DataFrame input")
         return True
@@ -247,8 +256,8 @@ def main() -> int:
     print(f"Scene camera: {SCENE_CAMERA_JSON}")
 
     results = {
-        "predict_cog_load_batch (CSV)":       test_predict_cog_load_batch(),
-        "predict_drowsiness_batch (CSV)":     test_predict_drowsiness_batch(),
+        "predict_cog_load_batch (CSV)": test_predict_cog_load_batch(),
+        "predict_drowsiness_batch (CSV)": test_predict_drowsiness_batch(),
         "predict_cog_load_batch (DataFrame)": test_batch_api_with_dataframe(),
     }
 

@@ -27,6 +27,7 @@ Usage:
 """
 
 import argparse
+import os
 import sys
 from collections import Counter
 from pathlib import Path
@@ -35,7 +36,7 @@ import pandas as pd
 
 import harmoneyes_theia
 
-LICENSE_KEY = "your-license-key-here"
+LICENSE_KEY = os.environ.get("THEIA_LICENSE_KEY", "your-license-key-here")
 TSV_PATH = Path("path/to/recording.tsv")  # Tobii G3 export TSV
 
 MW_LABELS = {0: "Low", 1: "Moderate", 2: "High"}
@@ -66,15 +67,22 @@ def run_batch(tsv_df: pd.DataFrame) -> "pd.DataFrame | None":
 
     print("\n  First 10 rows:")
     print(result.head(10).to_string(index=False))
+    print("\n  Last 10 rows:")
+    print(result.tail(10).to_string(index=False))
     return result
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("--tsv", type=Path, default=TSV_PATH,
-                        help="Path to Tobii G3 export TSV (default: TSV_PATH constant)")
+    parser.add_argument(
+        "--tsv",
+        type=Path,
+        default=TSV_PATH,
+        help="Path to Tobii G3 export TSV (default: TSV_PATH constant)",
+    )
     args = parser.parse_args()
 
     if not args.tsv.exists():
@@ -82,7 +90,9 @@ def main() -> None:
 
     print(f"Loading {args.tsv.name} ...")
     tsv_df = pd.read_csv(args.tsv, sep="\t", low_memory=False)
-    et_count = (tsv_df["Sensor"] == "Eye Tracker").sum() if "Sensor" in tsv_df.columns else 0
+    et_count = (
+        (tsv_df["Sensor"] == "Eye Tracker").sum() if "Sensor" in tsv_df.columns else 0
+    )
     print(f"  {len(tsv_df):,} total rows, {et_count:,} Eye Tracker rows")
 
     run_batch(tsv_df)

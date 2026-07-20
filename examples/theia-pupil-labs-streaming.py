@@ -24,7 +24,7 @@ import harmoneyes_theia
 # Configuration
 # ---------------------------------------------------------------------------
 
-LICENSE_KEY = "your-license-key-here"
+LICENSE_KEY = os.environ.get("THEIA_LICENSE_KEY", "your-license-key-here")
 
 # Duration in seconds to collect data.
 # Drowsiness updates every ~120s, so 400s captures at least 3 updates.

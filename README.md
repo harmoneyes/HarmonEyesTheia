@@ -123,21 +123,31 @@ result = sdk.process_tobii_g3_data(df)   # per-second predictions DataFrame
 and `drowsiness_level` (0–3) + `drowsiness_label` + `drowsiness_confidence`. See
 [`examples/theia-tobii-g3.py`](examples/theia-tobii-g3.py).
 
-### Webcam
+### Webcam (Tobii Nexus)
 
-The Webcam platform analyzes a stream of gaze samples that **your application
-provides** — the SDK does not open a camera itself. Construct the SDK with
-`platform="Webcam"`, inject a tracker that yields gaze samples, then stream:
+The Webcam platform turns on your webcam and estimates gaze with the bundled
+Tobii Nexus engine. Inject `NexusWebcamTracker` — it spawns a small Node sidecar
+(shipped with this package) that hosts the Tobii Nexus engine + camera capture
+and feeds gaze into the SDK:
 
 ```python
+import harmoneyes_theia
+
 sdk = harmoneyes_theia.TheiaSDK(license_key="your-license-key", platform="Webcam")
-sdk.tracker.set_tracker(your_gaze_source)   # object with get_buffered_data()
+sdk.tracker.set_tracker(harmoneyes_theia.NexusWebcamTracker())
 sdk.start_new_session(session_uuid)
-sdk.start_realtime_data()
+sdk.start_realtime_data()   # opens the camera + starts the gaze sidecar
 ```
 
-See [`examples/theia-webcam-streaming.py`](examples/theia-webcam-streaming.py) for
-the injection pattern.
+**Requirements:** **Node.js 20+** on your `PATH` (the gaze sidecar runs on
+Node), and a reachable Tobii Nexus license endpoint — set `TOBII_LICENSE_URL`
+(or `FASTAPI_URL`) to your signing server.
+
+> You can still supply your own gaze source instead: pass any object with
+> `get_buffered_data()` (yielding `{"timestamp": <ms>, "leftEyeX": …}` sample
+> dicts) to `set_tracker(...)`.
+
+See [`examples/theia-webcam-streaming.py`](examples/theia-webcam-streaming.py).
 
 ## License & Usage
 
