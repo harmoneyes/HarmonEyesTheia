@@ -35,7 +35,7 @@ COLLECTION_DURATION = 400
 # ---------------------------------------------------------------------------
 
 COG_LOAD_LABELS = {0: "Low", 1: "Moderate", 2: "High"}
-DROWSINESS_LABELS = {0: "Alert", 1: "Mild", 2: "Moderate", 3: "Drowsy"}
+FATIGUE_LABELS = {0: "Alert", 1: "Mild", 2: "Moderate", 3: "Drowsy"}
 
 OUTPUT_DIR = "results"
 
@@ -45,9 +45,9 @@ def format_cog_load(prediction: int) -> str:
     return COG_LOAD_LABELS.get(prediction, f"Unknown ({prediction})")
 
 
-def format_drowsiness(level: int) -> str:
-    """Map a numeric drowsiness level to a human-readable label."""
-    return DROWSINESS_LABELS.get(level, f"Unknown ({level})")
+def format_fatigue(level: int) -> str:
+    """Map a numeric fatigue level to a human-readable label."""
+    return FATIGUE_LABELS.get(level, f"Unknown ({level})")
 
 
 def save_results_to_csv(results: list[dict], session_id: str) -> str:
@@ -62,8 +62,8 @@ def save_results_to_csv(results: list[dict], session_id: str) -> str:
         "elapsed_s",
         "cog_load",
         "cog_load_label",
-        "drowsiness",
-        "drowsiness_label",
+        "fatigue",
+        "fatigue_label",
         "attention_level",
         "attention_label",
     ]
@@ -115,8 +115,8 @@ def main():
                 "elapsed_s": round(elapsed, 2),
                 "cog_load": None,
                 "cog_load_label": None,
-                "drowsiness": None,
-                "drowsiness_label": None,
+                "fatigue": None,
+                "fatigue_label": None,
                 "attention_level": None,
                 "attention_label": None,
             }
@@ -138,13 +138,13 @@ def main():
                 pass
 
             try:
-                drowsiness, _ = sdk.get_drowsiness_level()
-                if drowsiness is not None:
-                    drowsiness_value = next(iter(drowsiness.values()))
-                    drowsiness_label = format_drowsiness(drowsiness_value)
-                    row["drowsiness"] = drowsiness_value
-                    row["drowsiness_label"] = drowsiness_label
-                    parts.append(f"Drowsiness={drowsiness_label}")
+                fatigue, _ = sdk.get_fatigue_level()
+                if fatigue is not None:
+                    fatigue_value = next(iter(fatigue.values()))
+                    fatigue_label = format_fatigue(fatigue_value)
+                    row["fatigue"] = fatigue_value
+                    row["fatigue_label"] = fatigue_label
+                    parts.append(f"Fatigue={fatigue_label}")
             except AttributeError:
                 pass
 

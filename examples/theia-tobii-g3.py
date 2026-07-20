@@ -14,9 +14,9 @@ The returned DataFrame has one row per ACE window (~1 Hz after the model warmup)
     cog_load_level          0=Low, 1=Moderate, 2=High
     cog_load_label          human-readable cognitive-load level
     cog_load_confidence     model confidence in [0, 1]
-    drowsiness_level        0=Alert … 3=Drowsy (None during warmup)
-    drowsiness_label        human-readable drowsiness level
-    drowsiness_confidence   model confidence in [0, 1]
+    fatigue_level           0=Alert … 3=Drowsy (None during warmup)
+    fatigue_label           human-readable fatigue level
+    fatigue_confidence      model confidence in [0, 1]
 
 Prerequisites:
   1. export THEIA_LICENSE_KEY=...      # SDK license
@@ -39,7 +39,7 @@ import harmoneyes_theia
 LICENSE_KEY = os.environ.get("THEIA_LICENSE_KEY", "your-license-key-here")
 TSV_PATH = Path("path/to/recording.tsv")  # Tobii G3 export TSV
 
-MW_LABELS = {0: "Low", 1: "Moderate", 2: "High"}
+COG_LOAD_LABELS = {0: "Low", 1: "Moderate", 2: "High"}
 
 
 def run_batch(tsv_df: pd.DataFrame) -> "pd.DataFrame | None":
@@ -57,13 +57,13 @@ def run_batch(tsv_df: pd.DataFrame) -> "pd.DataFrame | None":
     if "cog_load_level" in result.columns:
         col = result["cog_load_level"].dropna()
         dist = dict(sorted(Counter(col.astype(int)).items()))
-        readable = {MW_LABELS.get(k, k): v for k, v in dist.items()}
+        readable = {COG_LOAD_LABELS.get(k, k): v for k, v in dist.items()}
         print(f"  Cognitive-load distribution: {readable}")
 
-    if "drowsiness_level" in result.columns:
-        col = result["drowsiness_level"].dropna()
+    if "fatigue_level" in result.columns:
+        col = result["fatigue_level"].dropna()
         if len(col):
-            print(f"  Drowsiness windows predicted: {len(col)}")
+            print(f"  Fatigue windows predicted: {len(col)}")
 
     print("\n  First 10 rows:")
     print(result.head(10).to_string(index=False))

@@ -2,7 +2,7 @@
 HarmonEyes Theia SDK Example: Ganzin Sol
 
 Connects to a Ganzin Sol eye tracker over the network, streams gaze data,
-and prints real-time cognitive load and drowsiness predictions.
+and prints real-time cognitive load and fatigue predictions.
 
 Prerequisites:
   1. export THEIA_LICENSE_KEY=...      # SDK license
@@ -28,7 +28,7 @@ GANZIN_IP = "192.168.1.100"
 GANZIN_PORT = 8080
 
 # Duration in seconds to collect data.
-# Drowsiness updates every ~120s, so 400s captures at least 3 updates.
+# Fatigue updates every ~120s, so 400s captures at least 3 updates.
 COLLECTION_DURATION = 400
 
 # ---------------------------------------------------------------------------
@@ -42,6 +42,7 @@ LICENSE_KEY = os.environ.get("THEIA_LICENSE_KEY", "your-license-key")
 # ---------------------------------------------------------------------------
 
 COG_LOAD_LABELS = {0: "Low", 1: "Moderate", 2: "High"}
+FATIGUE_LABELS = {0: "Alert", 1: "Mild", 2: "Moderate", 3: "Drowsy"}
 
 # Output directory for CSV files
 OUTPUT_DIR = "results"
@@ -52,6 +53,11 @@ def format_cog_load(prediction: int) -> str:
     return COG_LOAD_LABELS.get(prediction, f"Unknown ({prediction})")
 
 
+def format_fatigue(level: int) -> str:
+    """Map a numeric fatigue level to a human-readable label."""
+    return FATIGUE_LABELS.get(level, f"Unknown ({level})")
+
+
 def save_results_to_csv(results: list[dict], session_id: str) -> str:
     """Save collected results to a CSV file and return the file path."""
     os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -59,7 +65,7 @@ def save_results_to_csv(results: list[dict], session_id: str) -> str:
     filename = f"ganzin_session_{timestamp}_{session_id[:8]}.csv"
     filepath = os.path.join(OUTPUT_DIR, filename)
 
-    fieldnames = ["timestamp", "elapsed_s", "cog_load", "cog_load_label", "drowsiness"]
+    fieldnames = ["timestamp", "elapsed_s", "cog_load", "cog_load_label", "fatigue", "fatigue_label"]
     with open(filepath, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
@@ -101,7 +107,8 @@ def main():
                 "elapsed_s": round(elapsed, 2),
                 "cog_load": None,
                 "cog_load_label": None,
-                "drowsiness": None,
+                "fatigue": None,
+                "fatigue_label": None,
             }
 
             # Cognitive load predictions (updates every 5-second window)
@@ -117,12 +124,15 @@ def main():
             except AttributeError:
                 pass  # SDK not ready yet (warmup period)
 
-            # Drowsiness predictions (updates every ~120 seconds)
+            # Fatigue predictions (updates every ~120 seconds)
             try:
-                drowsiness, drowsiness_batch = sdk.get_drowsiness_level()
-                if drowsiness is not None:
-                    row["drowsiness"] = drowsiness
-                    print(f"  Drowsiness: {drowsiness}")
+                fatigue, fatigue_batch = sdk.get_fatigue_level()
+                if fatigue:
+                    # keyed by model name; take whichever produced this window.
+                    level = next(iter(fatigue.values()))
+                    row["fatigue"] = level
+                    row["fatigue_label"] = format_fatigue(level)
+                    print(f"  Fatigue: {format_fatigue(level)}")
             except AttributeError:
                 pass  # SDK not ready yet (warmup period)
 

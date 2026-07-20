@@ -1,6 +1,6 @@
 # HarmonEyes Theia SDK
 
-Python SDK for real-time eye tracking analysis, cognitive load prediction, and sleepiness detection.
+Python SDK for real-time eye tracking analysis, cognitive load prediction, and fatigue detection.
 
 > This package distributes **compiled binaries** of the HarmonEyes Theia SDK
 > (native C++ core with Python bindings). No source ships here. See
@@ -40,6 +40,10 @@ pip install .
 - **Runtime dependencies** (`numpy`, `pandas`) install automatically. The heavy
   native dependencies (libcurl, OpenSSL, XGBoost) are bundled inside the
   compiled extension — nothing else to install.
+- **Node.js 20+** — required **only for the Webcam (Tobii Nexus) platform**,
+  whose gaze sidecar runs on Node. Not needed for Pupil Labs, Ganzin, batch, or
+  Tobii G3. Install from [nodejs.org](https://nodejs.org) and ensure `node` is on
+  your `PATH`.
 - **License Key:** a valid license key is required to use the SDK.
 
 ### Using pyenv for Python 3.12
@@ -98,7 +102,7 @@ Process recorded gaze data without a live device:
 ```python
 sdk = harmoneyes_theia.TheiaSDK(license_key="your-license-key", platform="WT")
 cog_load = sdk.predict_cog_load_batch(dataframe_or_csv_path)
-drowsiness = sdk.predict_drowsiness_batch(dataframe_or_csv_path)
+fatigue = sdk.predict_drowsiness_batch(dataframe_or_csv_path)   # fatigue predictions
 ```
 
 See [`examples/theia-pupil-labs-batch.py`](examples/theia-pupil-labs-batch.py).
@@ -120,7 +124,7 @@ result = sdk.process_tobii_g3_data(df)   # per-second predictions DataFrame
 
 `result` has one row per ACE window (~1 Hz after warmup) with columns:
 `timestamp_s`, `cog_load_level` (0/1/2) + `cog_load_label` + `cog_load_confidence`,
-and `drowsiness_level` (0–3) + `drowsiness_label` + `drowsiness_confidence`. See
+and `fatigue_level` (0–3) + `fatigue_label` + `fatigue_confidence`. See
 [`examples/theia-tobii-g3.py`](examples/theia-tobii-g3.py).
 
 ### Webcam (Tobii Nexus)
@@ -139,9 +143,10 @@ sdk.start_new_session(session_uuid)
 sdk.start_realtime_data()   # opens the camera + starts the gaze sidecar
 ```
 
-**Requirements:** **Node.js 20+** on your `PATH` (the gaze sidecar runs on
-Node), and a reachable Tobii Nexus license endpoint — set `TOBII_LICENSE_URL`
-(or `FASTAPI_URL`) to your signing server.
+**Requirements:** **Node.js 20+** on your `PATH` (the gaze sidecar runs on Node).
+The Tobii Nexus license endpoint is baked into the distributed build, so no
+configuration is needed; to point at a different signing server, set
+`TOBII_LICENSE_URL` (or `FASTAPI_URL`).
 
 > You can still supply your own gaze source instead: pass any object with
 > `get_buffered_data()` (yielding `{"timestamp": <ms>, "leftEyeX": …}` sample
