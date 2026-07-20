@@ -1,12 +1,11 @@
 """
-Ganzin Sol — HarmonEyes Theia SDK Example
+HarmonEyes Theia SDK Example: Ganzin Sol
 
 Connects to a Ganzin Sol eye tracker over the network, streams gaze data,
 and prints real-time cognitive load and drowsiness predictions.
 
 Prerequisites:
-  1. Set your license key below:
-       LICENSE_KEY=your-license-key
+  1. export THEIA_LICENSE_KEY=...      # SDK license
   2. Ensure the Ganzin Sol device is reachable at the configured IP/port.
 
 Usage:

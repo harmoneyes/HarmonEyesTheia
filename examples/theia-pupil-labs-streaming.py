@@ -1,5 +1,5 @@
 """
-Pupil Labs Neon — HarmonEyes Theia SDK Example
+HarmonEyes Theia SDK Example: Pupil Labs Neon
 
 Connects to a Pupil Labs Neon eye tracker, streams gaze data,
 and prints real-time cognitive load and drowsiness predictions.
@@ -65,6 +65,7 @@ def save_results_to_csv(results: list[dict], session_id: str) -> str:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main():
     # Initialize the SDK with the Pupil Labs Neon platform

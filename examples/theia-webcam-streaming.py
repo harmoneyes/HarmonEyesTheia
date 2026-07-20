@@ -1,27 +1,14 @@
 """
-Webcam (Tobii Nexus) — HarmonEyes Theia SDK Example
-
-Turns on your webcam, estimates gaze with the bundled Tobii Nexus engine, and
-prints real-time cognitive load, drowsiness, attention, and mental readiness.
-
-How it works
-------------
-The Webcam platform consumes gaze samples; the gaze itself is produced by a
-small Node sidecar (bundled with this package) that hosts the Tobii Nexus engine
-and captures your camera. ``NexusWebcamTracker`` spawns that sidecar and feeds
-its gaze into the SDK — you just inject it via ``sdk.tracker.set_tracker(...)``.
+HarmonEyes Theia SDK Example: Webcam
 
 Requirements
 ------------
   * A valid license key (set ``THEIA_LICENSE_KEY`` or edit below).
   * **Node.js 20+** on your PATH (the gaze sidecar runs on Node).
-  * A reachable Tobii Nexus license endpoint — set ``TOBII_LICENSE_URL`` (or
-    ``FASTAPI_URL``) to your signing server.
   * A connected webcam.
 
 Usage:
   export THEIA_LICENSE_KEY=...      # SDK license
-  export TOBII_LICENSE_URL=...      # Tobii Nexus signing endpoint
   python theia-webcam-streaming.py
 """
 

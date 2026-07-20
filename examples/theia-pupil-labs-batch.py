@@ -1,10 +1,11 @@
 """
-Theia SDK — Batch API Examples
+HarmonEyes Theia SDK Example: Pupil Labs Neon Batch
 
 Demonstrates how to use the Theia SDK batch prediction methods for
 cognitive load and drowsiness analysis on pre-recorded gaze data.
 
 Prerequisites:
+    - export THEIA_LICENSE_KEY=...      # SDK license
     - A gaze data CSV file (gaze_and_eye_state.csv) in the same directory
     - A scene camera calibration file (scene_camera.json) in the same directory
 

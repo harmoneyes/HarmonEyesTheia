@@ -1,5 +1,5 @@
 """
-Tobii Pro Glasses 3 — HarmonEyes Theia SDK Example
+HarmonEyes Theia SDK Example: Tobii Pro Glasses 3
 
 Tobii G3 is processed as POST-RECORDED BATCH data only — there is no real-time
 streaming API. Load a full Tobii Pro Lab export (TSV) and process it in one call
@@ -19,7 +19,7 @@ The returned DataFrame has one row per ACE window (~1 Hz after the model warmup)
     drowsiness_confidence   model confidence in [0, 1]
 
 Prerequisites:
-  1. Set LICENSE_KEY and TSV_PATH below.
+  1. export THEIA_LICENSE_KEY=...      # SDK license
   2. pip install harmoneyes-theia pandas
 
 Usage:
