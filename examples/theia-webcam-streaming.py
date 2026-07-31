@@ -1,41 +1,15 @@
 """
-Webcam — HarmonEyes Theia SDK Example
+HarmonEyes Theia SDK Example: Webcam
 
-Uses the device webcam to stream gaze data and prints real-time
-mental workload, fatigue, attention, and mental readiness predictions.
-
-Prerequisites:
-  1. Set your license key below.
-  2. Ensure your webcam is accessible.
+Requirements
+------------
+  * A valid license key (set ``THEIA_LICENSE_KEY`` or edit below).
+  * **Node.js 20+** on your PATH (the gaze sidecar runs on Node).
+  * A connected webcam.
 
 Usage:
+  export THEIA_LICENSE_KEY=...      # SDK license
   python theia-webcam-streaming.py
-
-Selecting which webcam to use
------------------------------
-You do NOT need to set this — by default the SDK uses the system's built-in
-camera ("0"). Only set THEIA_CAMERA_DEVICE if you want to override the
-default and pick a different camera. Set it before launching this script
-(or before constructing TheiaSDK in-process).
-
-Platform-specific values:
-  macOS   (avfoundation): numeric index, e.g. "0", "1"
-  Linux   (v4l2):         device path,   e.g. "/dev/video0"
-  Windows (dshow):        friendly name, e.g. "Logitech BRIO"
-
-Examples:
-  macOS / Linux:
-    export THEIA_CAMERA_DEVICE=1
-    python theia-webcam-streaming.py
-
-  Windows (PowerShell):
-    $env:THEIA_CAMERA_DEVICE = "Logitech BRIO"
-    python theia-webcam-streaming.py
-
-Discovering available cameras on your system:
-  macOS:    ffmpeg -hide_banner -f avfoundation -list_devices true -i ""
-  Linux:    v4l2-ctl --list-devices        (or: ls /dev/video*)
-  Windows:  ffmpeg -hide_banner -f dshow   -list_devices true -i dummy
 """
 
 import csv
@@ -50,7 +24,7 @@ import harmoneyes_theia
 # Configuration
 # ---------------------------------------------------------------------------
 
-LICENSE_KEY = "your-license-key-here"
+LICENSE_KEY = os.environ.get("THEIA_LICENSE_KEY", "your-license-key-here")
 
 # Duration in seconds to collect data.
 # Fatigue updates every ~120s, so 400s captures at least 3 updates.
@@ -60,15 +34,15 @@ COLLECTION_DURATION = 400
 # Helpers
 # ---------------------------------------------------------------------------
 
-MW_LABELS = {0: "Low", 1: "Moderate", 2: "High"}
+COG_LOAD_LABELS = {0: "Low", 1: "Moderate", 2: "High"}
 FATIGUE_LABELS = {0: "Alert", 1: "Mild", 2: "Moderate", 3: "Drowsy"}
 
 OUTPUT_DIR = "results"
 
 
-def format_mental_workload(prediction: int) -> str:
-    """Map a numeric mental workload prediction to a human-readable label."""
-    return MW_LABELS.get(prediction, f"Unknown ({prediction})")
+def format_cog_load(prediction: int) -> str:
+    """Map a numeric cognitive load prediction to a human-readable label."""
+    return COG_LOAD_LABELS.get(prediction, f"Unknown ({prediction})")
 
 
 def format_fatigue(level: int) -> str:
@@ -84,10 +58,14 @@ def save_results_to_csv(results: list[dict], session_id: str) -> str:
     filepath = os.path.join(OUTPUT_DIR, filename)
 
     fieldnames = [
-        "timestamp", "elapsed_s",
-        "mental_workload", "mental_workload_label",
-        "fatigue", "fatigue_label",
-        "attention_level", "attention_label",
+        "timestamp",
+        "elapsed_s",
+        "cog_load",
+        "cog_load_label",
+        "fatigue",
+        "fatigue_label",
+        "attention_level",
+        "attention_label",
     ]
     with open(filepath, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -102,21 +80,26 @@ def save_results_to_csv(results: list[dict], session_id: str) -> str:
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main():
     sdk = harmoneyes_theia.TheiaSDK(
         license_key=LICENSE_KEY,
         platform="Webcam",
     )
 
+    # Inject the Tobii Nexus webcam gaze source. Spawning it (below, on
+    # start_realtime_data) opens the camera and starts the Node gaze sidecar.
+    sdk.tracker.set_tracker(harmoneyes_theia.NexusWebcamTracker())
+
     # Mental readiness normally requires 10 minutes; lower the gate for short sessions.
-    sdk.set_mental_readiness_min_session_seconds(30)
+    sdk.set_mental_fatigue_min_session_seconds(30)
 
     session_id = str(uuid.uuid4())
 
     print(f"[TheiaSDK] Starting session {session_id}")
     sdk.start_new_session(session_uuid=session_id)
 
-    print("[TheiaSDK] Starting data stream")
+    print("[TheiaSDK] Starting webcam + gaze sidecar")
     sdk.start_realtime_data()
 
     results = []
@@ -130,8 +113,8 @@ def main():
             row = {
                 "timestamp": datetime.now().isoformat(),
                 "elapsed_s": round(elapsed, 2),
-                "mental_workload": None,
-                "mental_workload_label": None,
+                "cog_load": None,
+                "cog_load_label": None,
                 "fatigue": None,
                 "fatigue_label": None,
                 "attention_level": None,
@@ -141,16 +124,16 @@ def main():
             parts = []
 
             try:
-                mw_levels, _, lookahead = sdk.get_mental_workload_levels()
-                if mw_levels is not None:
-                    prediction = next(iter(mw_levels.values()))["prediction"]
-                    label = format_mental_workload(prediction)
-                    row["mental_workload"] = prediction
-                    row["mental_workload_label"] = label
-                    mw_str = f"MW={label}"
+                cog_levels, _, lookahead = sdk.get_cog_load_levels()
+                if cog_levels is not None:
+                    prediction = next(iter(cog_levels.values()))["prediction"]
+                    label = format_cog_load(prediction)
+                    row["cog_load"] = prediction
+                    row["cog_load_label"] = label
+                    cog_str = f"CogLoad={label}"
                     if lookahead is not None:
-                        mw_str += f"({lookahead:.3f})"
-                    parts.append(mw_str)
+                        cog_str += f"({lookahead:.3f})"
+                    parts.append(cog_str)
             except AttributeError:
                 pass
 
@@ -166,16 +149,18 @@ def main():
                 pass
 
             try:
-                attention = sdk.get_attention()
+                attention = sdk.get_attention_style()
                 if attention is not None:
                     row["attention_level"] = attention["level"]
                     row["attention_label"] = attention["label"]
-                    parts.append(f"Attention={attention['label']}(lvl {attention['level']})")
+                    parts.append(
+                        f"Attention={attention['label']}(lvl {attention['level']})"
+                    )
             except AttributeError:
                 pass
 
             try:
-                mental_readiness = sdk.get_mental_readiness(elapsed_seconds=elapsed)
+                mental_readiness = sdk.get_mental_fatigue(elapsed_seconds=elapsed)
                 if mental_readiness is not None:
                     parts.append(
                         f"Readiness: lo={mental_readiness['low_percentage']:.1f}%"

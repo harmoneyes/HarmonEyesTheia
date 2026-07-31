@@ -1,30 +1,34 @@
 """
-Tobii Pro Glasses 3 — HarmonEyes Theia SDK Examples
+HarmonEyes Theia SDK Example: Tobii Pro Glasses 3
 
-Demonstrates batch and streaming processing of Tobii G3 gaze data.
+Tobii G3 is processed as POST-RECORDED BATCH data only — there is no real-time
+streaming API. Load a full Tobii Pro Lab export (TSV) and process it in one call
+through the SDK's ACE pipeline:
 
-  Batch:     Loads a full TSV export and processes it in one call,
-             returning per-second mental workload and drowsiness predictions.
+    sdk = harmoneyes_theia.TheiaSDK(license_key=..., platform="TobiiG3")
+    result = sdk.process_tobii_g3_data(tsv_df)   # per-second predictions DataFrame
 
-  Streaming: Feeds the same TSV one Eye Tracker row at a time, simulating
-             a live session and polling for predictions as they arrive.
+The returned DataFrame has one row per ACE window (~1 Hz after the model warmup):
+
+    timestamp_s             seconds from the recording start
+    cog_load_level          0=Low, 1=Moderate, 2=High
+    cog_load_label          human-readable cognitive-load level
+    cog_load_confidence     model confidence in [0, 1]
+    fatigue_level           0=Alert … 3=Drowsy (None during warmup)
+    fatigue_label           human-readable fatigue level
+    fatigue_confidence      model confidence in [0, 1]
 
 Prerequisites:
-  1. Set LICENSE_KEY and TSV_PATH below.
+  1. export THEIA_LICENSE_KEY=...      # SDK license
   2. pip install harmoneyes-theia pandas
 
 Usage:
-  python theia-tobii-g3.py
-  python theia-tobii-g3.py --batch-only
-  python theia-tobii-g3.py --stream-only
-  python theia-tobii-g3.py --rows 1000      # limit ET rows in streaming test
+  python theia-tobii-g3.py --tsv path/to/recording.tsv
 """
 
 import argparse
+import os
 import sys
-import threading
-import time
-import uuid
 from collections import Counter
 from pathlib import Path
 
@@ -32,183 +36,53 @@ import pandas as pd
 
 import harmoneyes_theia
 
-# ---------------------------------------------------------------------------
-# Configuration — set these before running
-# ---------------------------------------------------------------------------
-
-LICENSE_KEY = "your-license-key-here"
+LICENSE_KEY = os.environ.get("THEIA_LICENSE_KEY", "your-license-key-here")
 TSV_PATH = Path("path/to/recording.tsv")  # Tobii G3 export TSV
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-MW_LABELS = {0: "Low", 1: "Moderate", 2: "High"}
-FATIGUE_LABELS = {0: "Alert", 1: "Mild", 2: "Moderate", 3: "Drowsy"}
+COG_LOAD_LABELS = {0: "Low", 1: "Moderate", 2: "High"}
 
 
-def _print_header(title: str) -> None:
-    print(f"\n{'=' * 62}")
-    print(f"  {title}")
-    print("=" * 62)
-
-
-# ---------------------------------------------------------------------------
-# Batch
-# ---------------------------------------------------------------------------
-
-def run_batch(tsv_df: pd.DataFrame) -> pd.DataFrame:
-    """Process a full TSV export and return per-second predictions."""
-    _print_header("BATCH — process_tobii_g3_data()")
-
+def run_batch(tsv_df: pd.DataFrame) -> "pd.DataFrame | None":
+    """Process a full Tobii G3 export and return per-second predictions."""
     sdk = harmoneyes_theia.TheiaSDK(
         license_key=LICENSE_KEY,
-        platform="WT",
+        platform="TobiiG3",
     )
 
-    t0 = time.perf_counter()
     result = sdk.process_tobii_g3_data(tsv_df)
-    elapsed = time.perf_counter() - t0
 
-    print(f"  {len(result)} second-windows in {elapsed:.1f}s")
+    print(f"  {len(result)} second-windows returned")
     print(f"  Columns: {list(result.columns)}")
 
-    if "mental_workload_general_level" in result.columns:
-        col = result["mental_workload_general_level"].dropna()
+    if "cog_load_level" in result.columns:
+        col = result["cog_load_level"].dropna()
         dist = dict(sorted(Counter(col.astype(int)).items()))
-        print(f"  mental_workload_general_level  non-null={len(col)}/{len(result)}  dist={dist}")
+        readable = {COG_LOAD_LABELS.get(k, k): v for k, v in dist.items()}
+        print(f"  Cognitive-load distribution: {readable}")
 
-    if "drowsiness_level" in result.columns:
-        col = result["drowsiness_level"].dropna()
-        dist = dict(sorted(Counter(col.astype(int)).items()))
-        print(f"  drowsiness_level               non-null={len(col)}/{len(result)}  dist={dist}")
+    if "fatigue_level" in result.columns:
+        col = result["fatigue_level"].dropna()
+        if len(col):
+            print(f"  Fatigue windows predicted: {len(col)}")
 
-    display_cols = [
-        "timestamp_s",
-        "mental_workload_general_level",
-        "drowsiness_level",
-    ]
-    display_cols = [c for c in display_cols if c in result.columns]
-    print(f"\n  First 10 rows:")
-    print(result[display_cols].head(10).to_string(index=False))
-
+    print("\n  First 10 rows:")
+    print(result.head(10).to_string(index=False))
+    print("\n  Last 10 rows:")
+    print(result.tail(10).to_string(index=False))
     return result
 
-
-# ---------------------------------------------------------------------------
-# Streaming
-# ---------------------------------------------------------------------------
-
-def run_streaming(tsv_df: pd.DataFrame, max_et_rows: int | None) -> list[dict]:
-    """Feed ET rows one at a time and poll for real-time predictions."""
-    _print_header("STREAMING — start_tobii_g3_stream() + push_tobii_g3_chunk()")
-
-    et_rows = tsv_df[tsv_df["Sensor"] == "Eye Tracker"].copy().reset_index(drop=True)
-    if max_et_rows:
-        et_rows = et_rows.head(max_et_rows)
-
-    print(f"  {len(et_rows)} ET rows to feed one-by-one")
-
-    sdk = harmoneyes_theia.TheiaSDK(
-        license_key=LICENSE_KEY,
-        platform="WT",
-    )
-
-    predictions: list[dict] = []
-    lock = threading.Lock()
-
-    def on_batch(batch_counter: int) -> None:
-        # Called from the SDK's processing thread on every completed batch window.
-        # Capture both predictions immediately so none are overwritten between polls.
-        mw_levels = None
-        fatigue = None
-        try:
-            mw_levels, _, _ = sdk.get_mental_workload_levels()
-        except Exception:
-            pass
-        try:
-            fatigue, _ = sdk.get_fatigue_level()
-        except Exception:
-            pass
-        with lock:
-            predictions.append({
-                "batch": batch_counter,
-                "mental_workload": dict(mw_levels) if mw_levels else None,
-                "fatigue": fatigue,
-            })
-
-    sdk.set_sdk_row_callback(on_batch)
-    sdk.start_new_session(session_uuid=str(uuid.uuid4()))
-    sdk.start_tobii_g3_stream(sample_rate=50)
-
-    t0 = time.perf_counter()
-    for i in range(len(et_rows)):
-        sdk.push_tobii_g3_chunk(et_rows.iloc[i : i + 1])
-    print(f"  All rows pushed in {time.perf_counter() - t0:.2f}s — waiting for processing loop to drain...")
-
-    # Wait until the prediction count has been stable for 5 consecutive seconds.
-    prev_count = -1
-    stable = 0
-    for _ in range(120):
-        time.sleep(1)
-        with lock:
-            count = len(predictions)
-        sys.stdout.write(f"\r  {count} batches processed...")
-        sys.stdout.flush()
-        if count == prev_count:
-            stable += 1
-            if stable >= 5:
-                break
-        else:
-            stable = 0
-        prev_count = count
-
-    sdk.stop_processing()
-    print()
-
-    print(f"  Finished in {time.perf_counter() - t0:.1f}s — {len(predictions)} prediction snapshots captured")
-
-    if predictions:
-        mw_with_pred = [p for p in predictions if p["mental_workload"]]
-        if mw_with_pred:
-            all_levels = []
-            for p in mw_with_pred:
-                for data in p["mental_workload"].values():
-                    lvl = data.get("prediction") if isinstance(data, dict) else data
-                    if lvl is not None:
-                        all_levels.append(int(lvl))
-                    break  # first model key only for distribution summary
-            dist = dict(sorted(Counter(all_levels).items()))
-            print(f"  Mental workload distribution: {dist}")
-
-        print(f"\n  First 10 predictions:")
-        for p in predictions[:10]:
-            mw = p["mental_workload"]
-            if mw:
-                data = next(iter(mw.values()))
-                lvl = data.get("prediction") if isinstance(data, dict) else data
-                conf = data.get("confidence") if isinstance(data, dict) else None
-                conf_str = f"  conf={conf:.2f}" if conf is not None else ""
-                print(f"    batch={str(p['batch']):>4}  MW={MW_LABELS.get(lvl, lvl)}({lvl}){conf_str}")
-
-    return predictions
-
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
 
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("--tsv", type=Path, default=TSV_PATH,
-                        help="Path to Tobii G3 export TSV (default: TSV_PATH constant)")
-    parser.add_argument("--rows", type=int, default=None,
-                        help="Max ET rows fed to the streaming test (default: all)")
-    parser.add_argument("--batch-only", action="store_true")
-    parser.add_argument("--stream-only", action="store_true")
+    parser.add_argument(
+        "--tsv",
+        type=Path,
+        default=TSV_PATH,
+        help="Path to Tobii G3 export TSV (default: TSV_PATH constant)",
+    )
     args = parser.parse_args()
 
     if not args.tsv.exists():
@@ -216,26 +90,12 @@ def main() -> None:
 
     print(f"Loading {args.tsv.name} ...")
     tsv_df = pd.read_csv(args.tsv, sep="\t", low_memory=False)
-    et_count = (tsv_df["Sensor"] == "Eye Tracker").sum()
+    et_count = (
+        (tsv_df["Sensor"] == "Eye Tracker").sum() if "Sensor" in tsv_df.columns else 0
+    )
     print(f"  {len(tsv_df):,} total rows, {et_count:,} Eye Tracker rows")
 
-    batch_result = stream_result = None
-
-    if not args.stream_only:
-        batch_result = run_batch(tsv_df)
-
-    if not args.batch_only:
-        stream_result = run_streaming(tsv_df, args.rows)
-
-    if batch_result is not None and stream_result is not None:
-        _print_header("SUMMARY")
-        print(f"  Batch:     {len(batch_result)} second-windows returned")
-        print(f"  Streaming: {len(stream_result)} prediction snapshots captured")
-        if "mental_workload_general_level" in batch_result.columns:
-            b_nn = batch_result["mental_workload_general_level"].notna().sum()
-            print(f"  Batch MW predictions:     {b_nn}/{len(batch_result)}")
-            print(f"  Streaming MW predictions: {len([p for p in stream_result if p['mental_workload']])}/{len(stream_result)}")
-
+    run_batch(tsv_df)
     print("\nDone.")
 
 

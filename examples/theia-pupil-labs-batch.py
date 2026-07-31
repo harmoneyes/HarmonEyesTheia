@@ -1,15 +1,16 @@
 """
-Theia SDK — Batch API Examples
+HarmonEyes Theia SDK Example: Pupil Labs Neon Batch
 
 Demonstrates how to use the Theia SDK batch prediction methods for
-cognitive load and drowsiness analysis on pre-recorded gaze data.
+cognitive load and fatigue analysis on pre-recorded gaze data.
 
 Prerequisites:
+    - export THEIA_LICENSE_KEY=...      # SDK license
     - A gaze data CSV file (gaze_and_eye_state.csv) in the same directory
     - A scene camera calibration file (scene_camera.json) in the same directory
 
 Usage:
-    python test_batch_api_compiled.py
+    python theia-pupil-labs-batch.py
 """
 
 import sys
@@ -27,11 +28,10 @@ SCENE_CAMERA_JSON = "scene_camera.json"
 
 
 def _create_sdk() -> harmoneyes_theia.TheiaSDK:
-    """Create and return a configured TheiaSDK instance.
-    """
+    """Create and return a configured TheiaSDK instance."""
     import os
 
-    license_key = "your-license-key-here"
+    license_key = os.environ.get("THEIA_LICENSE_KEY", "your-license-key-here")
 
     return harmoneyes_theia.TheiaSDK(
         license_key=license_key,
@@ -90,7 +90,9 @@ def test_predict_cog_load_batch() -> bool:
         first = results[0]
         required_keys = {"timestamp", "value", "label", "confidence"}
         if not required_keys.issubset(first.keys()):
-            print(f"  ERROR: Missing keys. Expected {required_keys}, got {set(first.keys())}")
+            print(
+                f"  ERROR: Missing keys. Expected {required_keys}, got {set(first.keys())}"
+            )
             return False
 
         # Validate value ranges
@@ -98,11 +100,13 @@ def test_predict_cog_load_batch() -> bool:
             print(f"  ERROR: value={first['value']} out of expected range 0-2")
             return False
         if not (0.0 <= first["confidence"] <= 1.0):
-            print(f"  ERROR: confidence={first['confidence']} out of expected range 0.0-1.0")
+            print(
+                f"  ERROR: confidence={first['confidence']} out of expected range 0.0-1.0"
+            )
             return False
 
         # Display first result
-        print(f"\n  First result:")
+        print("\n  First result:")
         print(f"    timestamp:  {first['timestamp']}")
         print(f"    label:      {first['label']}")
         print(f"    value:      {first['value']}")
@@ -112,7 +116,9 @@ def test_predict_cog_load_batch() -> bool:
         print("\n  Sample predictions (evenly spaced):")
         for i in [0, len(results) // 4, len(results) // 2, -1]:
             r = results[i]
-            print(f"    t={r['timestamp']:6.1f}s  label={r['label']}  conf={r['confidence']:.3f}")
+            print(
+                f"    t={r['timestamp']:6.1f}s  label={r['label']}  conf={r['confidence']:.3f}"
+            )
 
         print("\nPASSED: predict_cog_load_batch()")
         return True
@@ -123,20 +129,21 @@ def test_predict_cog_load_batch() -> bool:
         return False
 
 
-def test_predict_drowsiness_batch() -> bool:
-    """Predict drowsiness from a CSV file path.
+def test_predict_fatigue_batch() -> bool:
+    """Predict fatigue from a CSV file path.
 
     Uses a prediction_stride of 120 seconds so predictions are generated
     every 2 minutes instead of every second. A timezone is required for
-    the drowsiness model's time-of-day feature encoding.
+    the fatigue model's time-of-day feature encoding. (The batch method is
+    named ``predict_drowsiness_batch`` for backward compatibility.)
 
     Each result dict contains:
         - timestamp (float): seconds from start of recording
         - value (int):       0 = alert, 1 = mild, 2 = moderate, 3 = severe
-        - label (str):       human-readable drowsiness level
+        - label (str):       human-readable fatigue level
         - confidence (float): model confidence in [0.0, 1.0]
     """
-    _print_header("Test 2: Drowsiness Batch Prediction (CSV path)")
+    _print_header("Test 2: Fatigue Batch Prediction (CSV path)")
 
     sdk = _create_sdk()
     print("SDK initialized")
@@ -148,10 +155,10 @@ def test_predict_drowsiness_batch() -> bool:
     print(f"Using data: {DATA_PATH.name}")
 
     try:
-        # Timezone is required — the drowsiness model uses time-of-day as a feature
+        # Timezone is required — the fatigue model uses time-of-day as a feature
         tz = ZoneInfo("America/New_York")
 
-        print("\nRunning predict_drowsiness_batch()...")
+        print("\nRunning fatigue batch prediction...")
         print("  prediction_stride=120  (one prediction every 2 minutes)")
         print(f"  timezone={tz}")
 
@@ -174,7 +181,9 @@ def test_predict_drowsiness_batch() -> bool:
         first = results[0]
         required_keys = {"timestamp", "value", "label", "confidence"}
         if not required_keys.issubset(first.keys()):
-            print(f"  ERROR: Missing keys. Expected {required_keys}, got {set(first.keys())}")
+            print(
+                f"  ERROR: Missing keys. Expected {required_keys}, got {set(first.keys())}"
+            )
             return False
 
         if not (0 <= first["value"] <= 3):
@@ -184,9 +193,9 @@ def test_predict_drowsiness_batch() -> bool:
         # With stride=120, there are few enough predictions to display them all
         print("\n  All predictions:")
         for r in results:
-            print(f"    t={r['timestamp']:6.1f}s  drowsiness={r['label']}")
+            print(f"    t={r['timestamp']:6.1f}s  fatigue={r['label']}")
 
-        print("\nPASSED: predict_drowsiness_batch()")
+        print("\nPASSED: fatigue batch prediction")
         return True
 
     except Exception as e:
@@ -214,7 +223,7 @@ def test_batch_api_with_dataframe() -> bool:
 
         # Use a small subset for faster execution
         df_subset = df.head(10_000)
-        print(f"  Using first 10,000 rows (50 seconds at 200 Hz)")
+        print("  Using first 10,000 rows (50 seconds at 200 Hz)")
 
         print("\nRunning predict_cog_load_batch() with DataFrame input...")
         results = sdk.predict_cog_load_batch(
@@ -229,7 +238,9 @@ def test_batch_api_with_dataframe() -> bool:
         if len(results) > 0:
             print("\n  First 5 predictions:")
             for r in results[:5]:
-                print(f"    t={r['timestamp']:6.1f}s  label={r['label']}  conf={r['confidence']:.3f}")
+                print(
+                    f"    t={r['timestamp']:6.1f}s  label={r['label']}  conf={r['confidence']:.3f}"
+                )
 
         print("\nPASSED: predict_cog_load_batch() with DataFrame input")
         return True
@@ -247,9 +258,9 @@ def main() -> int:
     print(f"Scene camera: {SCENE_CAMERA_JSON}")
 
     results = {
-        "predict_cog_load_batch (CSV)":       test_predict_cog_load_batch(),
-        "predict_drowsiness_batch (CSV)":     test_predict_drowsiness_batch(),
-        "predict_cog_load_batch (DataFrame)": test_batch_api_with_dataframe(),
+        "Cognitive Load Batch (CSV)": test_predict_cog_load_batch(),
+        "Fatigue Batch (CSV)": test_predict_fatigue_batch(),
+        "Cognitive Load Batch (DataFrame)": test_batch_api_with_dataframe(),
     }
 
     # Summary
