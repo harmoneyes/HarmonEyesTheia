@@ -50,7 +50,7 @@ htmlcov/
 *.whl
 
 # ---------------------------------------------------------------------------
-# Vendored compiled SDK (produced by theia-native release CI — see VENDORING.md)
+# Vendored compiled SDK (produced by theia-native release CI)
 # Fully compiled (Nuitka wrapper + pybind11 core), kept under vendor/ and
 # intentionally committed so `pip install git+https://…` works with no build
 # step. Re-include the compiled artifacts under vendor/ that the patterns above

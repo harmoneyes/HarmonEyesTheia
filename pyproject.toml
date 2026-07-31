@@ -1,10 +1,9 @@
 [project]
 name = "harmoneyes-theia"
 # Native-SDK era. Bumped to 2.x to supersede the old Nuitka 1.x builds (pip
-# treats higher versions as upgrades — must stay > the last 1.x release). The
-# release pipeline overwrites this with the theia-native package version at
-# vendor time; see VENDORING.md.
-version = "1.0.0"
+# treats higher versions as upgrades — must stay > the last 1.x release, which
+# was 1.1.0). Bump manually when cutting a new vendored release.
+version = "2.0.0"
 description = "HarmonEyes Theia SDK"
 readme = "README.md"
 requires-python = ">=3.12, <3.13"
@@ -51,7 +50,7 @@ build-backend = "hatchling.build"
 #
 # This repo holds NO source — only the fully-compiled (Nuitka + pybind11) output
 # of theia-native, dropped in by the release pipeline under vendor/ to keep the
-# repo root clean (see VENDORING.md). vendor/ contains:
+# repo root clean. vendor/ contains:
 #
 #   harmoneyes_theia.<abi>.so / .pyd   Nuitka-compiled wrapper package
 #   ace.<abi>.so / .pyd                Nuitka-compiled ace package

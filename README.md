@@ -3,8 +3,8 @@
 Python SDK for real-time eye tracking analysis, cognitive load prediction, and fatigue detection.
 
 > This package distributes **compiled binaries** of the HarmonEyes Theia SDK
-> (native C++ core with Python bindings). No source ships here. See
-> [`VENDORING.md`](VENDORING.md) for how the binaries are produced.
+> (native C++ core with Python bindings). No source ships here — the binaries
+> are built and vendored from the private `theia-native` repository.
 
 ## Installation
 
