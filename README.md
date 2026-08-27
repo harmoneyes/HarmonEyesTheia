@@ -34,6 +34,7 @@ pip install .
 
 ## Requirements
 - Python 3.12 only
+- **Platforms:** Linux x86_64, Linux aarch64, macOS arm64 (Apple Silicon), Windows x86_64.
 - No additional dependencies (all compiled into the binary)
 - **Git LFS**: Required to install from GitHub — run `git lfs install` once before installing
 - **License Key**: A valid license key is required to use the SDK.
