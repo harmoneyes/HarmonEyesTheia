@@ -36,7 +36,7 @@ pip install .
 
 - **Python 3.12 only.** The compiled extensions and bytecode are built for
   CPython 3.12 (`requires-python = ">=3.12,<3.13"`).
-- **Platforms:** Linux x86_64, macOS arm64 (Apple Silicon), Windows x86_64.
+- **Platforms:** Linux x86_64, Linux aarch64, macOS arm64 (Apple Silicon), Windows x86_64.
 - **Runtime dependencies** (`numpy`, `pandas`) install automatically. The heavy
   native dependencies (libcurl, OpenSSL, XGBoost) are bundled inside the
   compiled extension — nothing else to install.
