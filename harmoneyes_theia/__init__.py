@@ -31,10 +31,12 @@ def _get_platform_info() -> tuple[str, str]:
     if system == "Linux":
         if machine in ("x86_64", "AMD64"):
             return ("linux-x86_64", "harmoneyes_theia-linux-x86_64.so")
+        elif machine in ("aarch64", "arm64"):
+            return ("linux-aarch64", "harmoneyes_theia-linux-aarch64.so")
         else:
             raise RuntimeError(
                 f"Unsupported Linux architecture: {machine}. "
-                "Only x86_64 is supported."
+                "Only x86_64 and aarch64 are supported."
             )
 
     elif system == "Darwin":  # macOS
@@ -64,7 +66,7 @@ def _get_platform_info() -> tuple[str, str]:
     else:
         raise RuntimeError(
             f"Unsupported operating system: {system}. "
-            "Supported platforms: Linux (x86_64), macOS (arm64), Windows (x86_64)"
+            "Supported platforms: Linux (x86_64, aarch64), macOS (arm64), Windows (x86_64)"
         )
 
 
