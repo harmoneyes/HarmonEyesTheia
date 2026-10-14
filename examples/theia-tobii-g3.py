@@ -19,7 +19,7 @@ The returned DataFrame has one row per ACE window (~1 Hz after the model warmup)
     fatigue_confidence      model confidence in [0, 1]
 
 Prerequisites:
-  1. export THEIA_LEASE_TOKEN=...      # device lease (contact
+  1. export THEIA_LEASE=...      # device lease (contact
      support@harmoneyes.com if you don't have one)
   2. pip install harmoneyes-theia pandas
 
@@ -37,7 +37,9 @@ import pandas as pd
 
 import harmoneyes_theia
 
-LEASE_TOKEN = os.environ.get("THEIA_LEASE_TOKEN", "")
+# THEIA_LEASE is the current name. THEIA_LICENSE_KEY is accepted too, for
+# anyone upgrading from a pre-lease-auth install that already had it set.
+LEASE_TOKEN = os.environ.get("THEIA_LEASE") or os.environ.get("THEIA_LICENSE_KEY") or ""
 TSV_PATH = Path("path/to/recording.tsv")  # Tobii G3 export TSV
 
 COG_LOAD_LABELS = {0: "Low", 1: "Moderate", 2: "High"}
@@ -53,7 +55,7 @@ def run_batch(tsv_df: pd.DataFrame) -> "pd.DataFrame | None":
     except harmoneyes_theia.LeaseVerificationError as e:
         sys.exit(
             f"[TheiaSDK] Lease rejected: {e}\n"
-            "Set THEIA_LEASE_TOKEN to a valid device lease "
+            "Set THEIA_LEASE to a valid device lease "
             "(contact support@harmoneyes.com if you don't have one)."
         )
 

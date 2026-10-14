@@ -5,12 +5,12 @@ Connects to a Pupil Labs Neon eye tracker, streams gaze data,
 and prints real-time cognitive load and fatigue predictions.
 
 Prerequisites:
-  1. Set your device lease below or via THEIA_LEASE_TOKEN (contact
+  1. Set your device lease below or via THEIA_LEASE (contact
      support@harmoneyes.com if you don't have one).
   2. Ensure the Pupil Labs Neon device is paired and reachable.
 
 Usage:
-  export THEIA_LEASE_TOKEN=...
+  export THEIA_LEASE=...
   python theia-pupil-labs-streaming.py
 """
 
@@ -27,7 +27,9 @@ import harmoneyes_theia
 # Configuration
 # ---------------------------------------------------------------------------
 
-LEASE_TOKEN = os.environ.get("THEIA_LEASE_TOKEN", "")
+# THEIA_LEASE is the current name. THEIA_LICENSE_KEY is accepted too,
+# for anyone upgrading from a pre-lease-auth install that already had it set.
+LEASE_TOKEN = os.environ.get("THEIA_LEASE") or os.environ.get("THEIA_LICENSE_KEY") or ""
 
 # Duration in seconds to collect data.
 # Fatigue updates every ~120s, so 400s captures at least 3 updates.
@@ -85,7 +87,7 @@ def main():
     except harmoneyes_theia.LeaseVerificationError as e:
         sys.exit(
             f"[TheiaSDK] Lease rejected: {e}\n"
-            "Set THEIA_LEASE_TOKEN to a valid device lease "
+            "Set THEIA_LEASE to a valid device lease "
             "(contact support@harmoneyes.com if you don't have one)."
         )
 

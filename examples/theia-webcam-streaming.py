@@ -3,13 +3,13 @@ HarmonEyes Theia SDK Example: Webcam
 
 Requirements
 ------------
-  * A device lease (set ``THEIA_LEASE_TOKEN`` or edit below). Contact
+  * A device lease (set ``THEIA_LEASE`` or edit below). Contact
     support@harmoneyes.com if you don't have one yet.
   * **Node.js 20+** on your PATH (the gaze sidecar runs on Node).
   * A connected webcam.
 
 Usage:
-  export THEIA_LEASE_TOKEN=...      # device lease
+  export THEIA_LEASE=...      # device lease
   python theia-webcam-streaming.py
 """
 
@@ -26,7 +26,9 @@ import harmoneyes_theia
 # Configuration
 # ---------------------------------------------------------------------------
 
-LEASE_TOKEN = os.environ.get("THEIA_LEASE_TOKEN", "")
+# THEIA_LEASE is the current name. THEIA_LICENSE_KEY is accepted too,
+# for anyone upgrading from a pre-lease-auth install that already had it set.
+LEASE_TOKEN = os.environ.get("THEIA_LEASE") or os.environ.get("THEIA_LICENSE_KEY") or ""
 
 # Duration in seconds to collect data.
 # Fatigue updates every ~120s, so 400s captures at least 3 updates.
@@ -92,7 +94,7 @@ def main():
     except harmoneyes_theia.LeaseVerificationError as e:
         sys.exit(
             f"[TheiaSDK] Lease rejected: {e}\n"
-            "Set THEIA_LEASE_TOKEN to a valid device lease "
+            "Set THEIA_LEASE to a valid device lease "
             "(contact support@harmoneyes.com if you don't have one)."
         )
 

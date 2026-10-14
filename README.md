@@ -58,11 +58,13 @@ license key checked against a server.
 staff issues a lease for your device and sends you the token — you don't
 need to request or manage any credentials yourself.
 
-**Using it:** set `THEIA_LEASE_TOKEN` in your environment, or pass
-`lease_token=` directly when constructing `TheiaSDK`:
+**Using it:** set `THEIA_LEASE` in your environment, or pass
+`lease_token=` directly when constructing `TheiaSDK`. The examples also
+accept the older `THEIA_LICENSE_KEY` name, if you already have that set from
+before this SDK switched to lease-based auth.
 
 ```bash
-export THEIA_LEASE_TOKEN="<the token you were given>"
+export THEIA_LEASE="<the token you were given>"
 ```
 
 ```python

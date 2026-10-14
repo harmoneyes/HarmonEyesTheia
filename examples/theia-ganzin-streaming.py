@@ -5,7 +5,7 @@ Connects to a Ganzin Sol eye tracker over the network, streams gaze data,
 and prints real-time cognitive load and fatigue predictions.
 
 Prerequisites:
-  1. export THEIA_LEASE_TOKEN=...      # device lease (contact
+  1. export THEIA_LEASE=...      # device lease (contact
      support@harmoneyes.com if you don't have one)
   2. Ensure the Ganzin Sol device is reachable at the configured IP/port.
 
@@ -37,7 +37,9 @@ COLLECTION_DURATION = 400
 # Lease setup
 # ---------------------------------------------------------------------------
 
-LEASE_TOKEN = os.environ.get("THEIA_LEASE_TOKEN", "")
+# THEIA_LEASE is the current name. THEIA_LICENSE_KEY is accepted too,
+# for anyone upgrading from a pre-lease-auth install that already had it set.
+LEASE_TOKEN = os.environ.get("THEIA_LEASE") or os.environ.get("THEIA_LICENSE_KEY") or ""
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -92,7 +94,7 @@ def main():
     except harmoneyes_theia.LeaseVerificationError as e:
         sys.exit(
             f"[TheiaSDK] Lease rejected: {e}\n"
-            "Set THEIA_LEASE_TOKEN to a valid device lease "
+            "Set THEIA_LEASE to a valid device lease "
             "(contact support@harmoneyes.com if you don't have one)."
         )
     sdk.ip = GANZIN_IP
