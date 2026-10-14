@@ -130,12 +130,24 @@ See [`examples/theia-ganzin-streaming.py`](examples/theia-ganzin-streaming.py) f
 
 ### Batch processing (recorded data)
 
-> **Not currently functional.** The batch methods this section used to
-> document (`predict_cog_load_batch` / `predict_drowsiness_batch`) no longer
-> exist on the current SDK. See
-> [`examples/theia-pupil-labs-batch.py`](examples/theia-pupil-labs-batch.py)'s
-> header for what's needed to replace it — this needs a rework before it can
-> be documented here again.
+Score a pre-recorded Pupil Labs Neon export (a Pupil Cloud
+`gaze_and_eye_state.csv`) without a live device:
+
+```python
+sdk = harmoneyes_theia.TheiaSDK(lease_token="your-device-lease", platform="WT")
+cog_load = sdk.predict_cog_load_batch("gaze_and_eye_state.csv")
+fatigue = sdk.predict_fatigue_batch("gaze_and_eye_state.csv")
+```
+
+Each returns a list of `{"timestamp": <seconds from recording start>,
+"value": int, "label": str, "confidence": float}` dicts — cog load one per
+~1s window (0=Low, 1=Moderate, 2=High), fatigue one per emitted result
+(0=Alert, 1=Somewhat Fatigued, 2=Fatigued; its rolling window only emits
+periodically, so expect far fewer entries than cog load). No scene-camera
+calibration file is needed — Neon's own export already carries 3D
+optical-axis vectors directly.
+
+See [`examples/theia-pupil-labs-batch.py`](examples/theia-pupil-labs-batch.py).
 
 ### Tobii Pro Glasses 3
 
