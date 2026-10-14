@@ -5,16 +5,18 @@ Connects to a Pupil Labs Neon eye tracker, streams gaze data,
 and prints real-time cognitive load and fatigue predictions.
 
 Prerequisites:
-  1. Set your license key below or via THEIA_LICENSE_KEY.
+  1. Set your device lease below or via THEIA_LEASE_TOKEN (contact
+     support@harmoneyes.com if you don't have one).
   2. Ensure the Pupil Labs Neon device is paired and reachable.
 
 Usage:
-  export THEIA_LICENSE_KEY=...
+  export THEIA_LEASE_TOKEN=...
   python theia-pupil-labs-streaming.py
 """
 
 import csv
 import os
+import sys
 import time
 import uuid
 from datetime import datetime
@@ -25,7 +27,7 @@ import harmoneyes_theia
 # Configuration
 # ---------------------------------------------------------------------------
 
-LICENSE_KEY = os.environ.get("THEIA_LICENSE_KEY", "your-license-key-here")
+LEASE_TOKEN = os.environ.get("THEIA_LEASE_TOKEN", "")
 
 # Duration in seconds to collect data.
 # Fatigue updates every ~120s, so 400s captures at least 3 updates.
@@ -75,10 +77,17 @@ def save_results_to_csv(results: list[dict], session_id: str) -> str:
 
 def main():
     # Initialize the SDK with the Pupil Labs Neon platform
-    sdk = harmoneyes_theia.TheiaSDK(
-        license_key=LICENSE_KEY,
-        platform="PL",  # Pupil Labs Neon
-    )
+    try:
+        sdk = harmoneyes_theia.TheiaSDK(
+            lease_token=LEASE_TOKEN,
+            platform="PL",  # Pupil Labs Neon
+        )
+    except harmoneyes_theia.LeaseVerificationError as e:
+        sys.exit(
+            f"[TheiaSDK] Lease rejected: {e}\n"
+            "Set THEIA_LEASE_TOKEN to a valid device lease "
+            "(contact support@harmoneyes.com if you don't have one)."
+        )
 
     session_id = str(uuid.uuid4())
 
@@ -106,8 +115,8 @@ def main():
             try:
                 cog_levels, batch_num, _ = sdk.get_cog_load_levels()
                 if cog_levels:
-                    # levels is keyed by model name ("general" / "hierarchical");
-                    # take whichever model produced this window.
+                    # levels is keyed by model name (always "general" now —
+                    # the ACE model is the sole cognitive-load predictor).
                     prediction = next(iter(cog_levels.values()))["prediction"]
                     row["cog_load"] = prediction
                     row["cog_load_label"] = format_cog_load(prediction)

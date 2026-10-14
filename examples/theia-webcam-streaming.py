@@ -3,17 +3,19 @@ HarmonEyes Theia SDK Example: Webcam
 
 Requirements
 ------------
-  * A valid license key (set ``THEIA_LICENSE_KEY`` or edit below).
+  * A device lease (set ``THEIA_LEASE_TOKEN`` or edit below). Contact
+    support@harmoneyes.com if you don't have one yet.
   * **Node.js 20+** on your PATH (the gaze sidecar runs on Node).
   * A connected webcam.
 
 Usage:
-  export THEIA_LICENSE_KEY=...      # SDK license
+  export THEIA_LEASE_TOKEN=...      # device lease
   python theia-webcam-streaming.py
 """
 
 import csv
 import os
+import sys
 import time
 import uuid
 from datetime import datetime
@@ -24,7 +26,7 @@ import harmoneyes_theia
 # Configuration
 # ---------------------------------------------------------------------------
 
-LICENSE_KEY = os.environ.get("THEIA_LICENSE_KEY", "your-license-key-here")
+LEASE_TOKEN = os.environ.get("THEIA_LEASE_TOKEN", "")
 
 # Duration in seconds to collect data.
 # Fatigue updates every ~120s, so 400s captures at least 3 updates.
@@ -82,10 +84,17 @@ def save_results_to_csv(results: list[dict], session_id: str) -> str:
 
 
 def main():
-    sdk = harmoneyes_theia.TheiaSDK(
-        license_key=LICENSE_KEY,
-        platform="Webcam",
-    )
+    try:
+        sdk = harmoneyes_theia.TheiaSDK(
+            lease_token=LEASE_TOKEN,
+            platform="Webcam",
+        )
+    except harmoneyes_theia.LeaseVerificationError as e:
+        sys.exit(
+            f"[TheiaSDK] Lease rejected: {e}\n"
+            "Set THEIA_LEASE_TOKEN to a valid device lease "
+            "(contact support@harmoneyes.com if you don't have one)."
+        )
 
     # Inject the Tobii Nexus webcam gaze source. Spawning it (below, on
     # start_realtime_data) opens the camera and starts the Node gaze sidecar.

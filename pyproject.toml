@@ -2,8 +2,12 @@
 name = "harmoneyes-theia"
 # Native-SDK era. Bumped to 2.x to supersede the old Nuitka 1.x builds (pip
 # treats higher versions as upgrades — must stay > the last 1.x release, which
-# was 1.1.0). Bump manually when cutting a new vendored release.
-version = "2.0.0"
+# was 1.1.0). Bumped to 3.x for the Keygen -> offline device-lease auth
+# switch: `license_key=` is gone from the native SDK's TheiaSDK constructor,
+# replaced by `lease_token=` (see README's "Device Lease" section) — a
+# breaking change for any caller still passing license_key=. Bump manually
+# when cutting a new vendored release.
+version = "3.0.0"
 description = "HarmonEyes Theia SDK"
 readme = "README.md"
 requires-python = ">=3.12, <3.13"

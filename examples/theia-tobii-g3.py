@@ -5,7 +5,7 @@ Tobii G3 is processed as POST-RECORDED BATCH data only — there is no real-time
 streaming API. Load a full Tobii Pro Lab export (TSV) and process it in one call
 through the SDK's ACE pipeline:
 
-    sdk = harmoneyes_theia.TheiaSDK(license_key=..., platform="TobiiG3")
+    sdk = harmoneyes_theia.TheiaSDK(lease_token=..., platform="TobiiG3")
     result = sdk.process_tobii_g3_data(tsv_df)   # per-second predictions DataFrame
 
 The returned DataFrame has one row per ACE window (~1 Hz after the model warmup):
@@ -14,12 +14,13 @@ The returned DataFrame has one row per ACE window (~1 Hz after the model warmup)
     cog_load_level          0=Low, 1=Moderate, 2=High
     cog_load_label          human-readable cognitive-load level
     cog_load_confidence     model confidence in [0, 1]
-    fatigue_level           0=Alert … 3=Drowsy (None during warmup)
+    fatigue_level           0=Alert, 1=Somewhat Fatigued, 2=Fatigued (None during warmup)
     fatigue_label           human-readable fatigue level
     fatigue_confidence      model confidence in [0, 1]
 
 Prerequisites:
-  1. export THEIA_LICENSE_KEY=...      # SDK license
+  1. export THEIA_LEASE_TOKEN=...      # device lease (contact
+     support@harmoneyes.com if you don't have one)
   2. pip install harmoneyes-theia pandas
 
 Usage:
@@ -36,7 +37,7 @@ import pandas as pd
 
 import harmoneyes_theia
 
-LICENSE_KEY = os.environ.get("THEIA_LICENSE_KEY", "your-license-key-here")
+LEASE_TOKEN = os.environ.get("THEIA_LEASE_TOKEN", "")
 TSV_PATH = Path("path/to/recording.tsv")  # Tobii G3 export TSV
 
 COG_LOAD_LABELS = {0: "Low", 1: "Moderate", 2: "High"}
@@ -44,10 +45,17 @@ COG_LOAD_LABELS = {0: "Low", 1: "Moderate", 2: "High"}
 
 def run_batch(tsv_df: pd.DataFrame) -> "pd.DataFrame | None":
     """Process a full Tobii G3 export and return per-second predictions."""
-    sdk = harmoneyes_theia.TheiaSDK(
-        license_key=LICENSE_KEY,
-        platform="TobiiG3",
-    )
+    try:
+        sdk = harmoneyes_theia.TheiaSDK(
+            lease_token=LEASE_TOKEN,
+            platform="TobiiG3",
+        )
+    except harmoneyes_theia.LeaseVerificationError as e:
+        sys.exit(
+            f"[TheiaSDK] Lease rejected: {e}\n"
+            "Set THEIA_LEASE_TOKEN to a valid device lease "
+            "(contact support@harmoneyes.com if you don't have one)."
+        )
 
     result = sdk.process_tobii_g3_data(tsv_df)
 

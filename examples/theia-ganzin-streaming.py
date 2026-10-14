@@ -5,7 +5,8 @@ Connects to a Ganzin Sol eye tracker over the network, streams gaze data,
 and prints real-time cognitive load and fatigue predictions.
 
 Prerequisites:
-  1. export THEIA_LICENSE_KEY=...      # SDK license
+  1. export THEIA_LEASE_TOKEN=...      # device lease (contact
+     support@harmoneyes.com if you don't have one)
   2. Ensure the Ganzin Sol device is reachable at the configured IP/port.
 
 Usage:
@@ -14,6 +15,7 @@ Usage:
 
 import csv
 import os
+import sys
 import time
 import uuid
 from datetime import datetime
@@ -32,10 +34,10 @@ GANZIN_PORT = 8080
 COLLECTION_DURATION = 400
 
 # ---------------------------------------------------------------------------
-# License setup
+# Lease setup
 # ---------------------------------------------------------------------------
 
-LICENSE_KEY = os.environ.get("THEIA_LICENSE_KEY", "your-license-key")
+LEASE_TOKEN = os.environ.get("THEIA_LEASE_TOKEN", "")
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -82,10 +84,17 @@ def save_results_to_csv(results: list[dict], session_id: str) -> str:
 
 def main():
     # Initialize the SDK with the Ganzin Sol platform
-    sdk = harmoneyes_theia.TheiaSDK(
-        license_key=LICENSE_KEY,
-        platform="Ganzin",
-    )
+    try:
+        sdk = harmoneyes_theia.TheiaSDK(
+            lease_token=LEASE_TOKEN,
+            platform="Ganzin",
+        )
+    except harmoneyes_theia.LeaseVerificationError as e:
+        sys.exit(
+            f"[TheiaSDK] Lease rejected: {e}\n"
+            "Set THEIA_LEASE_TOKEN to a valid device lease "
+            "(contact support@harmoneyes.com if you don't have one)."
+        )
     sdk.ip = GANZIN_IP
     sdk.port = GANZIN_PORT
 
@@ -115,8 +124,8 @@ def main():
             try:
                 cog_levels, batch_num, _ = sdk.get_cog_load_levels()
                 if cog_levels:
-                    # levels is keyed by model name ("general" / "hierarchical");
-                    # take whichever model produced this window.
+                    # levels is keyed by model name (always "general" now —
+                    # the ACE model is the sole cognitive-load predictor).
                     prediction = next(iter(cog_levels.values()))["prediction"]
                     row["cog_load"] = prediction
                     row["cog_load_label"] = format_cog_load(prediction)
