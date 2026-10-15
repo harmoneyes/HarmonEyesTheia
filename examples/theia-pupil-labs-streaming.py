@@ -40,7 +40,7 @@ COLLECTION_DURATION = 400
 # ---------------------------------------------------------------------------
 
 COG_LOAD_LABELS = {0: "Low", 1: "Moderate", 2: "High"}
-FATIGUE_LABELS = {0: "Alert", 1: "Mild", 2: "Moderate", 3: "Drowsy"}
+FATIGUE_LABELS = {0: "Alert", 1: "Somewhat Fatigued", 2: "Fatigued"}
 
 OUTPUT_DIR = "results"
 
