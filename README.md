@@ -2,12 +2,12 @@
 
 Python SDK for real-time eye tracking analysis, cognitive load prediction, and fatigue detection.
 
-> This package distributes **compiled binaries** of the HarmonEyes Theia SDK
-> (native C++ core with Python bindings). No source ships here — the binaries
-> are built and vendored from the private `theia-native` repository.
+> This package distributes **compiled binaries** of the HarmonEyes Theia SDK.
+> No source ships here.
 
-> **Upgrading from v1.x?** See [`MIGRATION.md`](MIGRATION.md) for the full
-> list of breaking changes, new capabilities, and a migration checklist.
+> **Upgrading from an earlier release?** See [`MIGRATION.md`](MIGRATION.md)
+> for the full list of breaking changes, new capabilities, and a migration
+> checklist.
 
 ## Installation
 
@@ -40,9 +40,8 @@ pip install .
 - **Python 3.12 only.** The compiled extensions and bytecode are built for
   CPython 3.12 (`requires-python = ">=3.12,<3.13"`).
 - **Platforms:** Linux x86_64, Linux aarch64, macOS arm64 (Apple Silicon), Windows x86_64.
-- **Runtime dependencies** (`numpy`, `pandas`) install automatically. The heavy
-  native dependencies (libcurl, OpenSSL, XGBoost) are bundled inside the
-  compiled extension — nothing else to install.
+- **Runtime dependencies** (`numpy`, `pandas`) install automatically. Everything
+  else is bundled inside the compiled extension — nothing else to install.
 - **Node.js 20+** — required **only for the Webcam (Tobii Nexus) platform**,
   whose gaze sidecar runs on Node. Not needed for Pupil Labs, Ganzin, batch, or
   Tobii G3. Install from [nodejs.org](https://nodejs.org) and ensure `node` is on
@@ -155,8 +154,7 @@ See [`examples/theia-pupil-labs-batch.py`](examples/theia-pupil-labs-batch.py).
 ### Tobii Pro Glasses 3
 
 Tobii G3 is **post-recorded batch data only** — there is no real-time/streaming
-API. Load a full Tobii Pro Lab export (TSV) and process it in one call through
-the SDK's ACE pipeline:
+API. Load a full Tobii Pro Lab export (TSV) and process it in one call:
 
 ```python
 import pandas as pd

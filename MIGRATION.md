@@ -1,22 +1,20 @@
-# Migrating to v3 (the native SDK)
+# Migration guide
 
-`harmoneyes-theia` v3.0.0 replaces the old Python-heavy SDK (v1.x) with a
-thin wrapper over a compiled C++ native core (`theia-native`). This is a
-breaking release — most existing integrations need the changes below, but
-most of them are mechanical.
+This release has several breaking changes from earlier releases. Most are
+mechanical to update. This guide covers what changed, what's new, and a
+checklist to work through.
 
 ## Breaking changes
 
 ### 1. Auth: `license_key=` → `lease_token=`
 
-The SDK no longer validates a license key against a server. It verifies an
-offline, signed **device lease** instead.
+The SDK now authenticates with a **device lease** instead of a license key.
 
 ```python
-# Before (v1.x)
+# Before
 sdk = harmoneyes_theia.TheiaSDK(license_key="your-license-key-here", platform="PL")
 
-# After (v3.x)
+# After
 sdk = harmoneyes_theia.TheiaSDK(lease_token="your-device-lease", platform="PL")
 ```
 
@@ -32,8 +30,8 @@ sdk = harmoneyes_theia.TheiaSDK(lease_token="your-device-lease", platform="PL")
 
 ### 2. Fatigue is now a 3-class result, not 4-class
 
-The old 4-class fatigue model (`0=Alert, 1=Mild, 2=Moderate, 3=Drowsy`) has
-been replaced by a 3-class model:
+The fatigue result changed from a 4-class scheme
+(`0=Alert, 1=Mild, 2=Moderate, 3=Drowsy`) to 3-class:
 
 ```
 0 = Alert
@@ -42,21 +40,17 @@ been replaced by a 3-class model:
 ```
 
 Class `3` no longer exists and will never be returned. If your code has its
-own label dict (the bundled examples used to), update it — three bundled
-examples (`theia-webcam-streaming.py`, `theia-ganzin-streaming.py`,
-`theia-pupil-labs-streaming.py`) had a stale 4-class dict that's been fixed
-as of this migration; if you forked them earlier, re-sync.
+own label dict, update it.
 
 ### 3. Tobii G3 is now batch-only
 
-v1.x's `theia-tobii-g3.py` example supported both one-shot batch processing
-*and* a `--stream-only` mode that simulated a live session by feeding a
-recorded TSV row-by-row. v3.x drops the streaming simulation — Tobii G3 is
-post-recorded batch data only, through a single entry point:
+The Tobii G3 example used to support both one-shot batch processing *and* a
+`--stream-only` mode that simulated a live session from a recorded file.
+Tobii G3 is now post-recorded batch data only, through a single entry point:
 
 ```python
 df = pd.read_csv("recording.tsv", sep="\t", low_memory=False)
-result = sdk.process_tobii_g3_data(df)   # DataFrame, ~1 row per ACE window (~1Hz)
+result = sdk.process_tobii_g3_data(df)   # DataFrame, ~1 row per ~1Hz window
 ```
 
 `result` columns: `timestamp_s`, `cog_load_level/label/confidence`,
@@ -64,43 +58,35 @@ result = sdk.process_tobii_g3_data(df)   # DataFrame, ~1 row per ACE window (~1H
 
 ### 4. Webcam platform: new capture mechanism, Node.js now required
 
-v1.x's Webcam platform used OS-native camera capture (ffmpeg-based) with no
-extra runtime dependency, and let you pick a camera via `THEIA_CAMERA_DEVICE`.
-v3.x's Webcam platform runs on the Tobii Nexus gaze engine via a bundled
-Node.js sidecar:
+The Webcam platform's gaze engine now runs via a bundled Node.js sidecar:
 
 ```python
 sdk.tracker.set_tracker(harmoneyes_theia.NexusWebcamTracker())
-sdk.start_realtime_data()   # opens the camera + starts the Node sidecar
+sdk.start_realtime_data()   # opens the camera + starts the gaze sidecar
 ```
 
 - **Requires Node.js 20+ on `PATH`.** Nothing else needs installing — the
-  sidecar and the Tobii Nexus engine ship inside the package.
-- **`THEIA_CAMERA_DEVICE` has no replacement yet.** If you were selecting a
-  specific camera on a multi-camera machine, there's currently no equivalent
-  knob — this is a known gap, not something you're missing in the docs.
-  Flag it if it blocks you; it isn't addressed in this release.
+  sidecar ships inside the package.
+- **Selecting a specific camera on a multi-camera machine has no supported
+  mechanism yet.** This is a known gap, not something you're missing in the
+  docs — flag it to support if it blocks you.
 
 ### 5. Dependencies: most of them are gone
 
-v1.x pulled in ~45 runtime dependencies (xgboost, opencv-python, av, pyaudio,
-aiohttp/aiodns/aiortsp, pupil-labs-\*, protobuf, pydantic, rich, …) because it
-ran ML/feature code in Python. v3.x's native core statically links its heavy
-C/C++ dependencies (libcurl, OpenSSL, XGBoost) into the compiled extension,
-so the only runtime requirements are:
+Earlier releases pulled in roughly 45 runtime dependencies. This release
+needs only:
 
 - `numpy>=1.20`, `pandas>=1.5` (always)
 - `opencv-python>=4.5.0` — only if you use `DefaultTrackerVideo` for MP4
   replay (`pip install harmoneyes-theia[video]`)
 
-If your project pinned any of the old dependencies specifically for this
-SDK, you can likely drop them.
+If your project pinned other dependencies specifically for this SDK, you can
+likely drop them.
 
 ### 6. Installing no longer requires Git LFS
 
-v1.x tracked its per-platform webcam binaries via Git LFS
-(`git lfs install` was a prerequisite). v3.x's vendor bundle is tracked as
-regular Git objects — no LFS setup needed to `pip install` from GitHub.
+`git lfs install` is no longer a prerequisite — a plain `pip install` from
+GitHub works on its own.
 
 ## What's new
 
@@ -112,15 +98,13 @@ regular Git objects — no LFS setup needed to `pip install` from GitHub.
   fatigue = sdk.predict_fatigue_batch("gaze_and_eye_state.csv")
   ```
   Both accept a file path or a pre-loaded DataFrame. No scene-camera
-  calibration file needed — Neon's Cloud export already carries 3D
-  optical-axis vectors. See `examples/theia-pupil-labs-batch.py` (new).
-- **Mental readiness now emits on the same cadence as cognitive load**
-  (as soon as there's at least one cog-load sample), instead of silently
-  requiring 10 minutes of elapsed session time before producing a result.
-- **No proprietary session data written to disk.** Earlier builds wrote
-  full intermediate feature vectors and raw gaze rows to `sdk_files/` by
-  default on every machine running the SDK. That's now disabled
-  unconditionally for this package — nothing is written unless you've
+  calibration file needed. See `examples/theia-pupil-labs-batch.py` (new).
+- **Mental readiness now appears as soon as cognitive load does**, instead
+  of requiring several minutes of elapsed session time before producing a
+  result.
+- **No session data is written to disk by default.** Earlier releases wrote
+  intermediate data to a local folder on every machine running the SDK by
+  default. That's disabled now — nothing is written unless you've
   configured your own output path.
 - **An alert-rule engine**: `set_alert_rules()`, `enable_alert_sync()` /
   `disable_alert_sync()`, `list_alert_rules()`, `alert_rules_status()`,
@@ -152,9 +136,7 @@ names keeps working unmodified:
 - [ ] If using Tobii G3 streaming/simulation mode, switch to
       `process_tobii_g3_data()` batch processing.
 - [ ] If using the Webcam platform, install Node.js 20+ and inject
-      `NexusWebcamTracker()`; drop any `THEIA_CAMERA_DEVICE` usage (no
-      replacement yet).
-- [ ] Drop any now-unnecessary pinned dependencies (xgboost, opencv-python
-      unless using video replay, av, pyaudio, aiohttp family, pupil-labs-\*,
-      protobuf, pydantic, rich, etc.).
+      `NexusWebcamTracker()`; drop any custom camera-device-selection logic
+      (no replacement yet).
+- [ ] Drop any now-unnecessary pinned dependencies.
 - [ ] Remove any `git lfs install` step from your install docs/CI.

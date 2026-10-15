@@ -2,8 +2,7 @@
 HarmonEyes Theia SDK Example: Tobii Pro Glasses 3
 
 Tobii G3 is processed as POST-RECORDED BATCH data only — there is no real-time
-streaming API. Load a full Tobii Pro Lab export (TSV) and process it in one call
-through the SDK's ACE pipeline:
+streaming API. Load a full Tobii Pro Lab export (TSV) and process it in one call:
 
     sdk = harmoneyes_theia.TheiaSDK(lease_token=..., platform="TobiiG3")
     result = sdk.process_tobii_g3_data(tsv_df)   # per-second predictions DataFrame
