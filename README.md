@@ -6,6 +6,9 @@ Python SDK for real-time eye tracking analysis, cognitive load prediction, and f
 > (native C++ core with Python bindings). No source ships here — the binaries
 > are built and vendored from the private `theia-native` repository.
 
+> **Upgrading from v1.x?** See [`MIGRATION.md`](MIGRATION.md) for the full
+> list of breaking changes, new capabilities, and a migration checklist.
+
 ## Installation
 
 ### Direct from GitHub
