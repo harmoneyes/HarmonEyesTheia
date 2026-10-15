@@ -1,21 +1,28 @@
 """
-Theia SDK — Batch API Examples
+HarmonEyes Theia SDK Example: Pupil Labs Neon Batch
 
 Demonstrates how to use the Theia SDK batch prediction methods for
-cognitive load and drowsiness analysis on pre-recorded gaze data.
+cognitive load and fatigue analysis on a pre-recorded Pupil Labs Neon
+export. Runs the recording through the native ACE feature pipeline (the
+same one a live Neon session uses) and scores each window with the ACE
+cognitive-load and fatigue predictors.
 
 Prerequisites:
-    - A gaze data CSV file (gaze_and_eye_state.csv) in the same directory
-    - A scene camera calibration file (scene_camera.json) in the same directory
+    - export THEIA_LEASE=...      # device lease (contact
+      support@harmoneyes.com if you don't have one)
+    - A Pupil Cloud "gaze_and_eye_state.csv" export in the same directory
+
+No scene-camera calibration file is needed: Neon's own Cloud export already
+carries 3D optical-axis vectors directly (unlike older Pupil Core exports).
 
 Usage:
-    python test_batch_api_compiled.py
+    python theia-pupil-labs-batch.py
 """
 
+import os
 import sys
 import traceback
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 import pandas as pd
 
@@ -23,20 +30,24 @@ import harmoneyes_theia
 
 PROJECT_ROOT = Path(__file__).parent
 DATA_PATH = PROJECT_ROOT / "gaze_and_eye_state.csv"
-SCENE_CAMERA_JSON = "scene_camera.json"
 
 
 def _create_sdk() -> harmoneyes_theia.TheiaSDK:
-    """Create and return a configured TheiaSDK instance.
-    """
-    import os
-
-    license_key = "your-license-key-here"
-
-    return harmoneyes_theia.TheiaSDK(
-        license_key=license_key,
-        platform="WT",
-    )
+    """Create and return a configured TheiaSDK instance."""
+    # THEIA_LEASE is the current name. THEIA_LICENSE_KEY is accepted too,
+    # for anyone upgrading from a pre-lease-auth install that already had it set.
+    lease_token = os.environ.get("THEIA_LEASE") or os.environ.get("THEIA_LICENSE_KEY") or ""
+    try:
+        return harmoneyes_theia.TheiaSDK(
+            lease_token=lease_token,
+            platform="WT",
+        )
+    except harmoneyes_theia.LeaseVerificationError as e:
+        sys.exit(
+            f"[TheiaSDK] Lease rejected: {e}\n"
+            "Set THEIA_LEASE to a valid device lease "
+            "(contact support@harmoneyes.com if you don't have one)."
+        )
 
 
 def _print_header(title: str) -> None:
@@ -48,13 +59,12 @@ def _print_header(title: str) -> None:
 def test_predict_cog_load_batch() -> bool:
     """Predict cognitive load from a CSV file path.
 
-    Loads ~20 minutes of 200 Hz gaze data (240,000 rows) and runs batch
-    cognitive load prediction. Results contain per-second predictions after
-    a 20-second model warmup period.
+    Results contain per-window predictions (~1 Hz) after a ~30-second model
+    warmup period (10s calibration + 20s first window).
 
     Each result dict contains:
         - timestamp (float): seconds from start of recording
-        - value (int):       0 = low, 1 = medium, 2 = high
+        - value (int):       0 = low, 1 = moderate, 2 = high
         - label (str):       human-readable cognitive load level
         - confidence (float): model confidence in [0.0, 1.0]
     """
@@ -67,20 +77,14 @@ def test_predict_cog_load_batch() -> bool:
         print(f"ERROR: Data file not found: {DATA_PATH}")
         return False
 
-    print(f"Using data: {DATA_PATH.name} (240,000 rows = 20 min at 200 Hz)")
+    print(f"Using data: {DATA_PATH.name}")
 
     try:
         print("\nRunning predict_cog_load_batch()...")
-        print("  This may take a minute to process 20 minutes of data.")
 
-        results = sdk.predict_cog_load_batch(
-            data=str(DATA_PATH),
-            n_jobs=4,
-            scene_camera_json=SCENE_CAMERA_JSON,
-        )
+        results = sdk.predict_cog_load_batch(str(DATA_PATH))
 
         print(f"\nPredictions returned: {len(results)}")
-        print("  Expected: ~1180 (1200 seconds - 20 second warmup)")
 
         if len(results) == 0:
             print("  ERROR: No results returned")
@@ -90,7 +94,9 @@ def test_predict_cog_load_batch() -> bool:
         first = results[0]
         required_keys = {"timestamp", "value", "label", "confidence"}
         if not required_keys.issubset(first.keys()):
-            print(f"  ERROR: Missing keys. Expected {required_keys}, got {set(first.keys())}")
+            print(
+                f"  ERROR: Missing keys. Expected {required_keys}, got {set(first.keys())}"
+            )
             return False
 
         # Validate value ranges
@@ -98,11 +104,13 @@ def test_predict_cog_load_batch() -> bool:
             print(f"  ERROR: value={first['value']} out of expected range 0-2")
             return False
         if not (0.0 <= first["confidence"] <= 1.0):
-            print(f"  ERROR: confidence={first['confidence']} out of expected range 0.0-1.0")
+            print(
+                f"  ERROR: confidence={first['confidence']} out of expected range 0.0-1.0"
+            )
             return False
 
         # Display first result
-        print(f"\n  First result:")
+        print("\n  First result:")
         print(f"    timestamp:  {first['timestamp']}")
         print(f"    label:      {first['label']}")
         print(f"    value:      {first['value']}")
@@ -112,7 +120,9 @@ def test_predict_cog_load_batch() -> bool:
         print("\n  Sample predictions (evenly spaced):")
         for i in [0, len(results) // 4, len(results) // 2, -1]:
             r = results[i]
-            print(f"    t={r['timestamp']:6.1f}s  label={r['label']}  conf={r['confidence']:.3f}")
+            print(
+                f"    t={r['timestamp']:6.1f}s  label={r['label']}  conf={r['confidence']:.3f}"
+            )
 
         print("\nPASSED: predict_cog_load_batch()")
         return True
@@ -123,20 +133,20 @@ def test_predict_cog_load_batch() -> bool:
         return False
 
 
-def test_predict_drowsiness_batch() -> bool:
-    """Predict drowsiness from a CSV file path.
+def test_predict_fatigue_batch() -> bool:
+    """Predict fatigue from a CSV file path.
 
-    Uses a prediction_stride of 120 seconds so predictions are generated
-    every 2 minutes instead of every second. A timezone is required for
-    the drowsiness model's time-of-day feature encoding.
+    Fatigue's rolling window (~120s) only emits periodically, so this
+    returns far fewer entries than predict_cog_load_batch() — one per
+    emitted result, not one per window.
 
     Each result dict contains:
         - timestamp (float): seconds from start of recording
-        - value (int):       0 = alert, 1 = mild, 2 = moderate, 3 = severe
-        - label (str):       human-readable drowsiness level
+        - value (int):       0 = alert, 1 = somewhat fatigued, 2 = fatigued
+        - label (str):       human-readable fatigue level
         - confidence (float): model confidence in [0.0, 1.0]
     """
-    _print_header("Test 2: Drowsiness Batch Prediction (CSV path)")
+    _print_header("Test 2: Fatigue Batch Prediction (CSV path)")
 
     sdk = _create_sdk()
     print("SDK initialized")
@@ -148,45 +158,34 @@ def test_predict_drowsiness_batch() -> bool:
     print(f"Using data: {DATA_PATH.name}")
 
     try:
-        # Timezone is required — the drowsiness model uses time-of-day as a feature
-        tz = ZoneInfo("America/New_York")
+        print("\nRunning fatigue batch prediction...")
 
-        print("\nRunning predict_drowsiness_batch()...")
-        print("  prediction_stride=120  (one prediction every 2 minutes)")
-        print(f"  timezone={tz}")
-
-        results = sdk.predict_drowsiness_batch(
-            data=str(DATA_PATH),
-            timezone=tz,
-            prediction_stride=120,
-            n_jobs=4,
-            scene_camera_json=SCENE_CAMERA_JSON,
-        )
+        results = sdk.predict_fatigue_batch(str(DATA_PATH))
 
         print(f"\nPredictions returned: {len(results)}")
-        print("  Expected: ~9 (20 min of data, every 120 sec, with warmup)")
 
         if len(results) == 0:
-            print("  ERROR: No results returned")
-            return False
+            print("  No fatigue results emitted — recording is likely too "
+                  "short (fatigue needs ~120s of data after warmup).")
+            return True
 
-        # Validate result structure
         first = results[0]
         required_keys = {"timestamp", "value", "label", "confidence"}
         if not required_keys.issubset(first.keys()):
-            print(f"  ERROR: Missing keys. Expected {required_keys}, got {set(first.keys())}")
+            print(
+                f"  ERROR: Missing keys. Expected {required_keys}, got {set(first.keys())}"
+            )
             return False
 
-        if not (0 <= first["value"] <= 3):
-            print(f"  ERROR: value={first['value']} out of expected range 0-3")
+        if not (0 <= first["value"] <= 2):
+            print(f"  ERROR: value={first['value']} out of expected range 0-2")
             return False
 
-        # With stride=120, there are few enough predictions to display them all
         print("\n  All predictions:")
         for r in results:
-            print(f"    t={r['timestamp']:6.1f}s  drowsiness={r['label']}")
+            print(f"    t={r['timestamp']:6.1f}s  fatigue={r['label']}")
 
-        print("\nPASSED: predict_drowsiness_batch()")
+        print("\nPASSED: fatigue batch prediction")
         return True
 
     except Exception as e:
@@ -198,38 +197,34 @@ def test_predict_drowsiness_batch() -> bool:
 def test_batch_api_with_dataframe() -> bool:
     """Predict cognitive load from a pandas DataFrame (instead of a CSV path).
 
-    The batch API accepts either a file path (str) or a pandas DataFrame.
-    This test loads the CSV into a DataFrame, takes a 50-second subset
-    (10,000 rows at 200 Hz), and passes it directly to the SDK.
+    Both batch methods accept either a file path (str) or a pandas
+    DataFrame read from one.
     """
     _print_header("Test 3: Cognitive Load Batch Prediction (DataFrame input)")
 
     sdk = _create_sdk()
     print("SDK initialized")
 
+    if not DATA_PATH.exists():
+        print(f"ERROR: Data file not found: {DATA_PATH}")
+        return False
+
     try:
         print(f"\nLoading {DATA_PATH.name} into a DataFrame...")
         df = pd.read_csv(DATA_PATH)
-        print(f"  Full dataset: {len(df):,} rows")
-
-        # Use a small subset for faster execution
-        df_subset = df.head(10_000)
-        print(f"  Using first 10,000 rows (50 seconds at 200 Hz)")
+        print(f"  {len(df):,} rows")
 
         print("\nRunning predict_cog_load_batch() with DataFrame input...")
-        results = sdk.predict_cog_load_batch(
-            data=df_subset,
-            n_jobs=4,
-            scene_camera_json=SCENE_CAMERA_JSON,
-        )
+        results = sdk.predict_cog_load_batch(df)
 
         print(f"\nPredictions returned: {len(results)}")
-        print("  Expected: ~30 (50 seconds - 20 second warmup)")
 
         if len(results) > 0:
             print("\n  First 5 predictions:")
             for r in results[:5]:
-                print(f"    t={r['timestamp']:6.1f}s  label={r['label']}  conf={r['confidence']:.3f}")
+                print(
+                    f"    t={r['timestamp']:6.1f}s  label={r['label']}  conf={r['confidence']:.3f}"
+                )
 
         print("\nPASSED: predict_cog_load_batch() with DataFrame input")
         return True
@@ -243,13 +238,12 @@ def test_batch_api_with_dataframe() -> bool:
 def main() -> int:
     """Run all batch API examples and print a summary."""
     _print_header("Theia SDK — Batch API Examples")
-    print(f"Data file:    {DATA_PATH}")
-    print(f"Scene camera: {SCENE_CAMERA_JSON}")
+    print(f"Data file: {DATA_PATH}")
 
     results = {
-        "predict_cog_load_batch (CSV)":       test_predict_cog_load_batch(),
-        "predict_drowsiness_batch (CSV)":     test_predict_drowsiness_batch(),
-        "predict_cog_load_batch (DataFrame)": test_batch_api_with_dataframe(),
+        "Cognitive Load Batch (CSV)": test_predict_cog_load_batch(),
+        "Fatigue Batch (CSV)": test_predict_fatigue_batch(),
+        "Cognitive Load Batch (DataFrame)": test_batch_api_with_dataframe(),
     }
 
     # Summary

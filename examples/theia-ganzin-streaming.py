@@ -1,12 +1,12 @@
 """
-Ganzin Sol — HarmonEyes Theia SDK Example
+HarmonEyes Theia SDK Example: Ganzin Sol
 
 Connects to a Ganzin Sol eye tracker over the network, streams gaze data,
-and prints real-time mental workload and fatigue predictions.
+and prints real-time cognitive load and fatigue predictions.
 
 Prerequisites:
-  1. Set your license key below:
-       LICENSE_KEY=your-license-key
+  1. export THEIA_LEASE=...      # device lease (contact
+     support@harmoneyes.com if you don't have one)
   2. Ensure the Ganzin Sol device is reachable at the configured IP/port.
 
 Usage:
@@ -15,6 +15,7 @@ Usage:
 
 import csv
 import os
+import sys
 import time
 import uuid
 from datetime import datetime
@@ -29,28 +30,36 @@ GANZIN_IP = "192.168.1.100"
 GANZIN_PORT = 8080
 
 # Duration in seconds to collect data.
-# Drowsiness updates every ~120s, so 400s captures at least 3 updates.
+# Fatigue updates every ~120s, so 400s captures at least 3 updates.
 COLLECTION_DURATION = 400
 
 # ---------------------------------------------------------------------------
-# License setup
+# Lease setup
 # ---------------------------------------------------------------------------
 
-LICENSE_KEY = "your-license-key"
+# THEIA_LEASE is the current name. THEIA_LICENSE_KEY is accepted too,
+# for anyone upgrading from a pre-lease-auth install that already had it set.
+LEASE_TOKEN = os.environ.get("THEIA_LEASE") or os.environ.get("THEIA_LICENSE_KEY") or ""
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 COG_LOAD_LABELS = {0: "Low", 1: "Moderate", 2: "High"}
+FATIGUE_LABELS = {0: "Alert", 1: "Somewhat Fatigued", 2: "Fatigued"}
 
 # Output directory for CSV files
 OUTPUT_DIR = "results"
 
 
-def format_mental_workload(prediction: int) -> str:
-    """Map a numeric mental workload prediction to a human-readable label."""
+def format_cog_load(prediction: int) -> str:
+    """Map a numeric cognitive load prediction to a human-readable label."""
     return COG_LOAD_LABELS.get(prediction, f"Unknown ({prediction})")
+
+
+def format_fatigue(level: int) -> str:
+    """Map a numeric fatigue level to a human-readable label."""
+    return FATIGUE_LABELS.get(level, f"Unknown ({level})")
 
 
 def save_results_to_csv(results: list[dict], session_id: str) -> str:
@@ -60,7 +69,7 @@ def save_results_to_csv(results: list[dict], session_id: str) -> str:
     filename = f"ganzin_session_{timestamp}_{session_id[:8]}.csv"
     filepath = os.path.join(OUTPUT_DIR, filename)
 
-    fieldnames = ["timestamp", "elapsed_s", "mental_workload", "mental_workload_label", "fatigue"]
+    fieldnames = ["timestamp", "elapsed_s", "cog_load", "cog_load_label", "fatigue", "fatigue_label"]
     with open(filepath, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
@@ -74,12 +83,20 @@ def save_results_to_csv(results: list[dict], session_id: str) -> str:
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main():
     # Initialize the SDK with the Ganzin Sol platform
-    sdk = harmoneyes_theia.TheiaSDK(
-        license_key=LICENSE_KEY,
-        platform="Ganzin",
-    )
+    try:
+        sdk = harmoneyes_theia.TheiaSDK(
+            lease_token=LEASE_TOKEN,
+            platform="Ganzin",
+        )
+    except harmoneyes_theia.LeaseVerificationError as e:
+        sys.exit(
+            f"[TheiaSDK] Lease rejected: {e}\n"
+            "Set THEIA_LEASE to a valid device lease "
+            "(contact support@harmoneyes.com if you don't have one)."
+        )
     sdk.ip = GANZIN_IP
     sdk.port = GANZIN_PORT
 
@@ -99,28 +116,34 @@ def main():
             row = {
                 "timestamp": datetime.now().isoformat(),
                 "elapsed_s": round(elapsed, 2),
-                "mental_workload": None,
-                "mental_workload_label": None,
+                "cog_load": None,
+                "cog_load_label": None,
                 "fatigue": None,
+                "fatigue_label": None,
             }
 
-            # Mental workload predictions (updates every 5-second window)
+            # Cognitive load predictions (updates every 5-second window)
             try:
-                mw_levels, batch_num, _ = sdk.get_mental_workload_levels()
-                if mw_levels is not None:
-                    prediction = mw_levels["cog-load-general-smoothed"]["prediction"]
-                    row["mental_workload"] = prediction
-                    row["mental_workload_label"] = format_mental_workload(prediction)
-                    print(f"  Mental Workload: {format_mental_workload(prediction)}")
+                cog_levels, batch_num, _ = sdk.get_cog_load_levels()
+                if cog_levels:
+                    # levels is keyed by model name (always "general" now —
+                    # the ACE model is the sole cognitive-load predictor).
+                    prediction = next(iter(cog_levels.values()))["prediction"]
+                    row["cog_load"] = prediction
+                    row["cog_load_label"] = format_cog_load(prediction)
+                    print(f"  Cognitive Load: {format_cog_load(prediction)}")
             except AttributeError:
                 pass  # SDK not ready yet (warmup period)
 
             # Fatigue predictions (updates every ~120 seconds)
             try:
                 fatigue, fatigue_batch = sdk.get_fatigue_level()
-                if fatigue is not None:
-                    row["fatigue"] = fatigue
-                    print(f"  Fatigue: {fatigue}")
+                if fatigue:
+                    # keyed by model name; take whichever produced this window.
+                    level = next(iter(fatigue.values()))
+                    row["fatigue"] = level
+                    row["fatigue_label"] = format_fatigue(level)
+                    print(f"  Fatigue: {format_fatigue(level)}")
             except AttributeError:
                 pass  # SDK not ready yet (warmup period)
 
