@@ -102,9 +102,6 @@ def main():
     # start_realtime_data) opens the camera and starts the Node gaze sidecar.
     sdk.tracker.set_tracker(harmoneyes_theia.NexusWebcamTracker())
 
-    # Mental readiness normally requires 10 minutes; lower the gate for short sessions.
-    sdk.set_mental_fatigue_min_session_seconds(30)
-
     session_id = str(uuid.uuid4())
 
     print(f"[TheiaSDK] Starting session {session_id}")
