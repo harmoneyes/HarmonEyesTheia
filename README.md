@@ -61,9 +61,10 @@ staff issues a lease for your device and sends you the token — you don't
 need to request or manage any credentials yourself.
 
 **Using it:** set `THEIA_LEASE` in your environment, or pass
-`lease_token=` directly when constructing `TheiaSDK`. The examples also
-accept the older `THEIA_LICENSE_KEY` name, if you already have that set from
-before this SDK switched to lease-based auth.
+`lease_token=` directly when constructing `TheiaSDK`. The older
+`THEIA_LICENSE_KEY` env var and `license_key=` constructor keyword are both
+still accepted too, if you already have code using those names from before
+this SDK switched to lease-based auth.
 
 ```bash
 export THEIA_LEASE="<the token you were given>"

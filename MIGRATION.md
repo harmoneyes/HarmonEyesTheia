@@ -6,25 +6,32 @@ checklist to work through.
 
 ## Breaking changes
 
-### 1. Auth: `license_key=` → `lease_token=`
+### 1. Auth: now lease-based, not license-key-based
 
 The SDK now authenticates with a **device lease** instead of a license key.
+Your existing code keeps working either way — both the constructor keyword
+and the environment variable accept the old or the new name:
 
 ```python
-# Before
-sdk = harmoneyes_theia.TheiaSDK(license_key="your-license-key-here", platform="PL")
-
-# After
-sdk = harmoneyes_theia.TheiaSDK(lease_token="your-device-lease", platform="PL")
+# Either of these works
+sdk = harmoneyes_theia.TheiaSDK(license_key="your-token", platform="PL")
+sdk = harmoneyes_theia.TheiaSDK(lease_token="your-token", platform="PL")
 ```
 
-- Set `THEIA_LEASE` in your environment (recommended) or pass `lease_token=`
-  directly. **`THEIA_LICENSE_KEY` still works as a fallback** if you already
-  have that env var set — you don't have to rename it immediately.
+```bash
+# Either of these works
+export THEIA_LICENSE_KEY="your-token"
+export THEIA_LEASE="your-token"
+```
+
+`lease_token=` / `THEIA_LEASE` are the current names going forward; you
+don't need to rename anything immediately.
+
 - A missing/invalid/expired lease now raises `harmoneyes_theia.LeaseVerificationError`
   (or a subclass — `LeaseExpiredError`, `LeaseMalformedError`) **at construction
   time**, before any device or model work happens. Wrap construction in a
-  `try/except` (every bundled example now does this).
+  `try/except` (every bundled example now does this) — this part is a real
+  behavior change even though the parameter name isn't forcing your hand.
 - Contact support@harmoneyes.com for a lease the same way you'd have
   contacted sales for a license key.
 
@@ -121,6 +128,7 @@ names keeps working unmodified:
 
 | Old name | New name |
 |---|---|
+| `license_key="..."` (constructor kwarg / env var) | `lease_token="..."` / `THEIA_LEASE` |
 | `get_mental_workload_levels()` | `get_cog_load_levels()` |
 | `get_fatigue_level()` | `get_drowsiness_level()` |
 | `get_attention()` | `get_attention_style()` |
@@ -129,9 +137,11 @@ names keeps working unmodified:
 
 ## Quick checklist
 
-- [ ] Rename `license_key=` → `lease_token=`; set `THEIA_LEASE` (or keep
-      `THEIA_LICENSE_KEY` for now).
-- [ ] Wrap `TheiaSDK(...)` construction in `try/except LeaseVerificationError`.
+- [ ] Wrap `TheiaSDK(...)` construction in `try/except LeaseVerificationError`
+      (this is required even if you keep `license_key=`/`THEIA_LICENSE_KEY`).
+- [ ] Optionally rename `license_key=` → `lease_token=` and
+      `THEIA_LICENSE_KEY` → `THEIA_LEASE` — not required, but these are the
+      names going forward.
 - [ ] Update any hardcoded 4-class fatigue label dict to the 3-class scheme.
 - [ ] If using Tobii G3 streaming/simulation mode, switch to
       `process_tobii_g3_data()` batch processing.
