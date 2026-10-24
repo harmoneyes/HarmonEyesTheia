@@ -8,8 +8,8 @@ same one a live Neon session uses) and scores each window with the ACE
 cognitive-load and fatigue predictors.
 
 Prerequisites:
-    - export THEIA_LEASE=...      # device lease (contact
-      support@harmoneyes.com if you don't have one)
+    - export THEIA_API_KEY_ID=... THEIA_API_KEY_SECRET=...   # your HarmonEyes API key
+      (see the README, "Device Lease")
     - A Pupil Cloud "gaze_and_eye_state.csv" export in the same directory
 
 No scene-camera calibration file is needed: Neon's own Cloud export already
@@ -19,7 +19,6 @@ Usage:
     python theia-pupil-labs-batch.py
 """
 
-import os
 import sys
 import traceback
 from pathlib import Path
@@ -34,19 +33,15 @@ DATA_PATH = PROJECT_ROOT / "gaze_and_eye_state.csv"
 
 def _create_sdk() -> harmoneyes_theia.TheiaSDK:
     """Create and return a configured TheiaSDK instance."""
-    # THEIA_LEASE is the current name. THEIA_LICENSE_KEY is accepted too,
-    # for anyone upgrading from a pre-lease-auth install that already had it set.
-    lease_token = os.environ.get("THEIA_LEASE") or os.environ.get("THEIA_LICENSE_KEY") or ""
     try:
         return harmoneyes_theia.TheiaSDK(
-            lease_token=lease_token,
             platform="WT",
         )
     except harmoneyes_theia.LeaseVerificationError as e:
         sys.exit(
             f"[TheiaSDK] Lease rejected: {e}\n"
-            "Set THEIA_LEASE to a valid device lease "
-            "(contact support@harmoneyes.com if you don't have one)."
+            "Set THEIA_API_KEY_ID and THEIA_API_KEY_SECRET to your HarmonEyes API key "
+            "(see the README, \"Device Lease\")."
         )
 
 

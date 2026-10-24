@@ -1,0 +1,82 @@
+name: CI
+
+# Every PR and every push to main. vendor/ is theia-native's compiled output
+# (its release workflow opens the PRs that change it), so CI checks what a
+# customer gets: nothing but compiled code, no private key, and on every
+# platform it ships for, a package that installs, reports the release in
+# pyproject.toml and refuses to run without a lease.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  vendored-release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compiled code only, and no private key
+        run: |
+          set -euo pipefail
+          stray=$(find vendor \( -name '*.py' -o -name '*.pyc' \) | head -5)
+          if [ -n "$stray" ]; then
+            echo "::error::vendor/ contains Python source or bytecode: $stray"
+            exit 1
+          fi
+          found=0
+          while IFS= read -r lib; do
+            found=1
+            if grep -aq -- "PRIVATE KEY-----" "$lib"; then
+              echo "::error file=$lib::contains a private key"
+              exit 1
+            fi
+          done < <(find vendor -name '_theia_native*' -type f)
+          [ "$found" = 1 ] || { echo "::error::no _theia_native library under vendor/"; exit 1; }
+          echo "vendor/ is compiled code only, with no private key"
+
+  install:
+    name: install (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-22.04-arm, macos-14, windows-2022]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the package as a customer would
+        run: pip install .
+
+      - name: The SDK loads, reports this release and needs a lease
+        shell: bash
+        # Outside the checkout, so Python imports the installed package.
+        working-directory: ${{ runner.temp }}
+        env:
+          PYPROJECT: ${{ github.workspace }}/pyproject.toml
+        run: |
+          env -u THEIA_LEASE -u THEIA_LICENSE_KEY -u THEIA_API_KEY_ID -u THEIA_API_KEY_SECRET -u THEIA_LEASE_FILE \
+            python - <<'PY'
+          import os, tomllib
+          import harmoneyes_theia as ht
+
+          with open(os.environ["PYPROJECT"], "rb") as f:
+              release = tomllib.load(f)["project"]["version"]
+          print("pyproject.toml:", release, "| library:", ht.version())
+          if ht.version() != release:
+              raise SystemExit(f"FAIL: the library reports {ht.version()}, pyproject.toml says {release}")
+
+          try:
+              ht.TheiaSDK(platform="WT")
+          except ht.LeaseVerificationError as e:
+              print("PASS: refused to run without a lease:", e)
+          else:
+              raise SystemExit("FAIL: TheiaSDK started without a lease")
+          PY

@@ -32,8 +32,12 @@ don't need to rename anything immediately.
   time**, before any device or model work happens. Wrap construction in a
   `try/except` (every bundled example now does this) — this part is a real
   behavior change even though the parameter name isn't forcing your hand.
-- Contact support@harmoneyes.com for a lease the same way you'd have
-  contacted sales for a license key.
+- **Recommended: let the SDK get its own lease.** Set your HarmonEyes API key
+  (`THEIA_API_KEY_ID` and `THEIA_API_KEY_SECRET`, or `lease_api_key_id=` /
+  `lease_api_key_secret=`) and the SDK obtains a lease for each machine on its
+  first start, keeps it in `~/.theia/lease`, and renews it in the background;
+  see the README's "Device Lease". A lease you were given still works as
+  `lease_token=` / `THEIA_LEASE`.
 
 ### 2. Fatigue is now a 3-class result, not 4-class
 
@@ -95,7 +99,32 @@ likely drop them.
 `git lfs install` is no longer a prerequisite — a plain `pip install` from
 GitHub works on its own.
 
+### 7. Removed calls
+
+These have no alias; use the replacement:
+
+| Removed | Use instead |
+|---|---|
+| `license_info` / `get_license_status()` | `lease_info()` |
+| `strict_license_mode=` | Nothing: leases are checked offline, with no server to be strict about |
+| `cog_load_prediction_method=`, `set_mental_workload_prediction_method()` / `set_cog_load_prediction_method()` | Nothing: there is one cognitive-load model now, so nothing to choose between |
+| `set_mental_workload_model_settings()` | `set_cog_load_model_settings()` |
+| `get_fatigue_ttt()` | `get_drowsiness_ttt()` |
+| `predict_drowsiness_batch()` | `predict_fatigue_batch()` |
+| `refine_cog_load_batch()` | No replacement |
+
 ## What's new
+
+- **Leases that keep themselves current.** With your API key set, the SDK
+  obtains a lease for each machine and renews it before it expires; a
+  machine works offline until its lease runs out. `lease_info()` reports the
+  lease and the last renewal, `renew_lease()` renews on demand, and
+  `LeaseRenewalError` says when HarmonEyes refused or could not be reached.
+- **Push gaze from your own head-mounted tracker** with
+  `add_gaze_samples()`, from the tracker's frame callback, with no
+  `start_realtime_data()`; see the README's "Your own head-mounted tracker".
+- **Mental readiness as a state:** `get_mental_readiness()` adds
+  `label` ("High" or "Low") and `level` alongside the percentages.
 
 - **Batch predictions from a recorded Pupil Labs Neon export** — score a
   `gaze_and_eye_state.csv` with no live device:
@@ -137,6 +166,9 @@ names keeps working unmodified:
 
 ## Quick checklist
 
+- [ ] Set your API key on each machine (`THEIA_API_KEY_ID` and
+      `THEIA_API_KEY_SECRET`) so the SDK gets and renews its own lease.
+- [ ] Replace any call in "Removed calls" above.
 - [ ] Wrap `TheiaSDK(...)` construction in `try/except LeaseVerificationError`
       (this is required even if you keep `license_key=`/`THEIA_LICENSE_KEY`).
 - [ ] Optionally rename `license_key=` → `lease_token=` and

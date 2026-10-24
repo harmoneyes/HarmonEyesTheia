@@ -3,13 +3,12 @@ HarmonEyes Theia SDK Example: Webcam
 
 Requirements
 ------------
-  * A device lease (set ``THEIA_LEASE`` or edit below). Contact
-    support@harmoneyes.com if you don't have one yet.
+  * Your HarmonEyes API key in THEIA_API_KEY_ID and THEIA_API_KEY_SECRET
+    (see the README, "Device Lease").
   * **Node.js 20+** on your PATH (the gaze sidecar runs on Node).
   * A connected webcam.
 
 Usage:
-  export THEIA_LEASE=...      # device lease
   python theia-webcam-streaming.py
 """
 
@@ -25,10 +24,6 @@ import harmoneyes_theia
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-
-# THEIA_LEASE is the current name. THEIA_LICENSE_KEY is accepted too,
-# for anyone upgrading from a pre-lease-auth install that already had it set.
-LEASE_TOKEN = os.environ.get("THEIA_LEASE") or os.environ.get("THEIA_LICENSE_KEY") or ""
 
 # Duration in seconds to collect data.
 # Fatigue updates every ~120s, so 400s captures at least 3 updates.
@@ -80,6 +75,17 @@ def save_results_to_csv(results: list[dict], session_id: str) -> str:
     return filepath
 
 
+def results_line(sdk, cog_load: str, fatigue: str) -> str:
+    """Every result on one line. Cognitive load and fatigue are the newest the
+    SDK handed over; attention style and mental readiness are running states,
+    read on the spot."""
+    attention = sdk.get_attention_style()
+    readiness = sdk.get_mental_readiness()
+    return (f"Cognitive load: {cog_load} | Fatigue: {fatigue} | "
+            f"Attention: {attention['label'] if attention else 'not yet'} | "
+            f"Mental readiness: {readiness['label'] if readiness else 'not yet'}")
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -88,14 +94,13 @@ def save_results_to_csv(results: list[dict], session_id: str) -> str:
 def main():
     try:
         sdk = harmoneyes_theia.TheiaSDK(
-            lease_token=LEASE_TOKEN,
             platform="Webcam",
         )
     except harmoneyes_theia.LeaseVerificationError as e:
         sys.exit(
             f"[TheiaSDK] Lease rejected: {e}\n"
-            "Set THEIA_LEASE to a valid device lease "
-            "(contact support@harmoneyes.com if you don't have one)."
+            "Set THEIA_API_KEY_ID and THEIA_API_KEY_SECRET to your HarmonEyes API key "
+            "(see the README, \"Device Lease\")."
         )
 
     # Inject the Tobii Nexus webcam gaze source. Spawning it (below, on
@@ -115,6 +120,9 @@ def main():
 
     print(f"Collecting data for {COLLECTION_DURATION}s — Ctrl+C to stop early\n")
 
+    # get_cog_load_levels() and get_fatigue_level() hand over each result once,
+    # so keep the newest for the printed line.
+    cog_load_now, fatigue_now = "warming up", "not yet"
     try:
         while (time.time() - start_time) < COLLECTION_DURATION:
             elapsed = time.time() - start_time
@@ -129,19 +137,14 @@ def main():
                 "attention_label": None,
             }
 
-            parts = []
-
             try:
-                cog_levels, _, lookahead = sdk.get_cog_load_levels()
+                cog_levels, _, _ = sdk.get_cog_load_levels()
                 if cog_levels is not None:
                     prediction = next(iter(cog_levels.values()))["prediction"]
                     label = format_cog_load(prediction)
                     row["cog_load"] = prediction
                     row["cog_load_label"] = label
-                    cog_str = f"CogLoad={label}"
-                    if lookahead is not None:
-                        cog_str += f"({lookahead:.3f})"
-                    parts.append(cog_str)
+                    cog_load_now = label
             except AttributeError:
                 pass
 
@@ -152,7 +155,7 @@ def main():
                     fatigue_label = format_fatigue(fatigue_value)
                     row["fatigue"] = fatigue_value
                     row["fatigue_label"] = fatigue_label
-                    parts.append(f"Fatigue={fatigue_label}")
+                    fatigue_now = fatigue_label
             except AttributeError:
                 pass
 
@@ -161,25 +164,10 @@ def main():
                 if attention is not None:
                     row["attention_level"] = attention["level"]
                     row["attention_label"] = attention["label"]
-                    parts.append(
-                        f"Attention={attention['label']}(lvl {attention['level']})"
-                    )
             except AttributeError:
                 pass
 
-            try:
-                mental_readiness = sdk.get_mental_fatigue(elapsed_seconds=elapsed)
-                if mental_readiness is not None:
-                    parts.append(
-                        f"Readiness: lo={mental_readiness['low_percentage']:.1f}%"
-                        f" mod={mental_readiness['moderate_percentage']:.1f}%"
-                        f" hi={mental_readiness['high_percentage']:.1f}%"
-                    )
-            except AttributeError:
-                pass
-
-            status = "  |  ".join(parts) if parts else "(warming up...)"
-            print(f"[{elapsed:5.1f}s] {status}", flush=True)
+            print(f"[{elapsed:5.1f}s] {results_line(sdk, cog_load_now, fatigue_now)}", flush=True)
 
             results.append(row)
             time.sleep(1.0)
