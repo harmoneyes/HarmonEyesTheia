@@ -46,10 +46,10 @@ pip install .
 - **Platforms:** Linux x86_64, Linux aarch64, macOS arm64 (Apple Silicon), Windows x86_64.
 - **Runtime dependencies** (`numpy`, `pandas`) install automatically. Everything
   else is bundled inside the compiled extension — nothing else to install.
-- **Node.js 20+** — required **only for the Webcam (Tobii Nexus) platform**,
-  whose gaze sidecar runs on Node. Not needed for Pupil Labs, Ganzin, batch, or
-  Tobii G3. Install from [nodejs.org](https://nodejs.org) and ensure `node` is on
-  your `PATH`.
+- **For the Webcam (Tobii Nexus) platform only, about 160 MB of free disk** in
+  your home directory. The first time the webcam starts, the SDK unpacks its
+  gaze sidecar there (see [Webcam](#webcam-tobii-nexus)). Nothing else to
+  install; Node.js is not needed.
 - **On Linux, CA certificates** (`apt install ca-certificates`), which minimal
   and container images may lack. Without them the SDK cannot reach HarmonEyes.
 - **Your HarmonEyes API key,** which gives each machine its device lease; see
@@ -220,9 +220,9 @@ and `fatigue_level` (0=Alert, 1=Somewhat Fatigued, 2=Fatigued) + `fatigue_label`
 ### Webcam (Tobii Nexus)
 
 The Webcam platform turns on your webcam and estimates gaze with the bundled
-Tobii Nexus engine. Inject `NexusWebcamTracker` — it spawns a small Node sidecar
-(shipped with this package) that hosts the Tobii Nexus engine + camera capture
-and feeds gaze into the SDK:
+Tobii Nexus engine. Inject `NexusWebcamTracker` — it starts the gaze sidecar
+shipped with this package, a compiled program that hosts the Tobii Nexus engine
+and camera capture and feeds gaze into the SDK:
 
 ```python
 import harmoneyes_theia
@@ -233,7 +233,12 @@ sdk.start_new_session(session_uuid)
 sdk.start_realtime_data()   # opens the camera + starts the gaze sidecar
 ```
 
-**Requirements:** **Node.js 20+** on your `PATH` (the gaze sidecar runs on Node).
+**Requirements:** nothing to install. The first start unpacks the sidecar
+(about 160 MB) into `~/.theia/webcam-sidecar/`, which takes a few seconds; later
+starts reuse it, and a new release unpacks its own copy. Where there is no
+writable home directory (a service account, say) it uses the system temp
+directory instead. The SDK runs the sidecar only from a directory that no
+other user can write to, and refuses to start it otherwise.
 The Tobii Nexus license endpoint is baked into the distributed build, so no
 configuration is needed; to point at a different signing server, set
 `TOBII_LICENSE_URL` (or `FASTAPI_URL`).

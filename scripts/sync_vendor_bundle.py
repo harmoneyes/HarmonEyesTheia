@@ -5,7 +5,7 @@ The compiled, bytecode-stripped SDK is produced by theia-native's release CI
 (`scripts/build_vendor_bundle.py`) and published as a `.tar.gz` bundle. This
 script unpacks that bundle and replaces the vendored package trees in this repo:
 
-    harmoneyes_theia/        ace/        harmoneyes_theia.libs/   (+ .dylibs)
+    harmoneyes_theia/        harmoneyes_theia.libs/   (+ .dylibs)
 
 It is the only supported way to refresh the binaries — there is no source here.
 Run it from CI (see .github/workflows/sync-native-sdk.yml) or locally to test a
@@ -78,19 +78,32 @@ def _materialize(bundle: str) -> Path:
     sys.exit(f"ERROR: bundle is neither a directory nor a tarball: {bundle_path}")
 
 
+# Nothing readable ships: no Python source or bytecode, and no JavaScript, source
+# maps or TypeScript (the webcam sidecar ships as a compiled executable).
+REFUSED_FILES = ("*.py", "*.pyc", "*.js", "*.mjs", "*.cjs", "*.map", "*.ts", "package.json")
+
+
 def _validate(src: Path) -> None:
     """Refuse to sync anything that isn't fully compiled or is missing the SDK.
 
-    The bundle must be source-free (Nuitka-compiled wrapper): no ``.py`` and no
-    ``.pyc`` — only machine-code ``.so``/``.pyd``.
+    The bundle must be source-free (Nuitka-compiled wrapper, compiled sidecar):
+    none of REFUSED_FILES and no node_modules, only machine code. Nor may it
+    carry the ``ace`` package, theia-native's internal feature-extraction tool,
+    which would hand out feature vectors.
     """
-    for bad in ("*.py", "*.pyc"):
+    for bad in REFUSED_FILES:
         stray = list(src.rglob(bad))
         if stray:
             sys.exit(
                 f"ERROR: bundle contains {len(stray)} {bad} file(s) — refusing to "
                 f"publish non-compiled source to a public repo. e.g. {stray[:3]}"
             )
+    stray = [p for p in src.rglob("node_modules")]
+    if stray:
+        sys.exit(f"ERROR: bundle contains node_modules — refusing to publish it. e.g. {stray[:3]}")
+    ace = [p.name for p in src.iterdir() if p.name == "ace" or p.name.startswith("ace.")]
+    if ace:
+        sys.exit(f"ERROR: bundle contains the internal ace package ({', '.join(ace)}) — refusing to publish it")
     wrapper = [p for p in src.glob("harmoneyes_theia.*") if p.suffix in (".so", ".pyd")]
     if not wrapper:
         sys.exit("ERROR: bundle has no compiled harmoneyes_theia extension")

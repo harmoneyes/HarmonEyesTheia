@@ -27,6 +27,19 @@ jobs:
             echo "::error::vendor/ contains Python source or bytecode: $stray"
             exit 1
           fi
+          # The webcam sidecar ships compiled: no JavaScript, maps or TypeScript.
+          stray=$(find vendor \( -name '*.js' -o -name '*.mjs' -o -name '*.cjs' -o -name '*.map' \
+                                 -o -name '*.ts' -o -name package.json -o -name node_modules \) | head -5)
+          if [ -n "$stray" ]; then
+            echo "::error::vendor/ contains JavaScript or its sources: $stray"
+            exit 1
+          fi
+          # theia-native's feature-extraction tool would hand out features.
+          stray=$(find vendor -maxdepth 1 \( -name ace -o -name 'ace.*' \) | head -5)
+          if [ -n "$stray" ]; then
+            echo "::error::vendor/ contains the internal ace package: $stray"
+            exit 1
+          fi
           found=0
           while IFS= read -r lib; do
             found=1

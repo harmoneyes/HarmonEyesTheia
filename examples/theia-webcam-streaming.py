@@ -5,7 +5,8 @@ Requirements
 ------------
   * Your HarmonEyes API key in THEIA_API_KEY_ID and THEIA_API_KEY_SECRET
     (see the README, "Device Lease").
-  * **Node.js 20+** on your PATH (the gaze sidecar runs on Node).
+  * About 160 MB of free disk in your home directory: the first start unpacks
+    the gaze sidecar into ~/.theia/webcam-sidecar/.
   * A connected webcam.
 
 Usage:
@@ -104,7 +105,7 @@ def main():
         )
 
     # Inject the Tobii Nexus webcam gaze source. Spawning it (below, on
-    # start_realtime_data) opens the camera and starts the Node gaze sidecar.
+    # start_realtime_data) opens the camera and starts the gaze sidecar.
     sdk.tracker.set_tracker(harmoneyes_theia.NexusWebcamTracker())
 
     session_id = str(uuid.uuid4())

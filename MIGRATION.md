@@ -67,17 +67,18 @@ result = sdk.process_tobii_g3_data(df)   # DataFrame, ~1 row per ~1Hz window
 `result` columns: `timestamp_s`, `cog_load_level/label/confidence`,
 `fatigue_level/label/confidence`.
 
-### 4. Webcam platform: new capture mechanism, Node.js now required
+### 4. Webcam platform: new capture mechanism
 
-The Webcam platform's gaze engine now runs via a bundled Node.js sidecar:
+The Webcam platform's gaze engine now runs in a gaze sidecar, a compiled
+program that ships inside the package:
 
 ```python
 sdk.tracker.set_tracker(harmoneyes_theia.NexusWebcamTracker())
 sdk.start_realtime_data()   # opens the camera + starts the gaze sidecar
 ```
 
-- **Requires Node.js 20+ on `PATH`.** Nothing else needs installing — the
-  sidecar ships inside the package.
+- **Nothing needs installing** (no Node.js). The first start unpacks the
+  sidecar (about 160 MB) into `~/.theia/webcam-sidecar/`; later starts reuse it.
 - **Selecting a specific camera on a multi-camera machine has no supported
   mechanism yet.** This is a known gap, not something you're missing in the
   docs — flag it to support if it blocks you.
@@ -177,8 +178,7 @@ names keeps working unmodified:
 - [ ] Update any hardcoded 4-class fatigue label dict to the 3-class scheme.
 - [ ] If using Tobii G3 streaming/simulation mode, switch to
       `process_tobii_g3_data()` batch processing.
-- [ ] If using the Webcam platform, install Node.js 20+ and inject
-      `NexusWebcamTracker()`; drop any custom camera-device-selection logic
-      (no replacement yet).
+- [ ] If using the Webcam platform, inject `NexusWebcamTracker()`; drop any
+      custom camera-device-selection logic (no replacement yet).
 - [ ] Drop any now-unnecessary pinned dependencies.
 - [ ] Remove any `git lfs install` step from your install docs/CI.
