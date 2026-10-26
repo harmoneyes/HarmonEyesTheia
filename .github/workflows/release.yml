@@ -1,0 +1,39 @@
+name: Release
+
+# Each theia-native release arrives as a PR that rewrites vendor/ and sets
+# pyproject.toml's version. Once CI passes on main with a version that has no
+# tag yet, this tags that commit and publishes a GitHub Release, so customers
+# install a fixed release rather than main.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Tag and publish the release, if this version has none yet
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          tag="v$(python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')"
+          if git ls-remote --exit-code --tags origin "refs/tags/${tag}" > /dev/null; then
+            echo "${tag} is already released"
+            exit 0
+          fi
+          prerelease=()
+          if [[ "${tag}" == *-* || "${tag}" == *+* ]]; then prerelease=(--prerelease); fi
+          gh release create "${tag}" --target "${SHA}" --title "${tag}" --generate-notes "${prerelease[@]}" \
+            --notes "Install: \`pip install \"harmoneyes-theia @ git+https://github.com/harmoneyes/HarmonEyesTheia.git@${tag}\"\`"

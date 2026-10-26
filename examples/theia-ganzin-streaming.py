@@ -2,11 +2,12 @@
 HarmonEyes Theia SDK Example: Ganzin Sol
 
 Connects to a Ganzin Sol eye tracker over the network, streams gaze data,
-and prints real-time cognitive load and fatigue predictions.
+and prints one line a second with every result: cognitive load,
+fatigue, attention style and mental readiness.
 
 Prerequisites:
-  1. export THEIA_LEASE=...      # device lease (contact
-     support@harmoneyes.com if you don't have one)
+  1. export THEIA_API_KEY_ID=...       # your HarmonEyes API key
+     export THEIA_API_KEY_SECRET=...   (see the README, "Device Lease")
   2. Ensure the Ganzin Sol device is reachable at the configured IP/port.
 
 Usage:
@@ -32,14 +33,6 @@ GANZIN_PORT = 8080
 # Duration in seconds to collect data.
 # Fatigue updates every ~120s, so 400s captures at least 3 updates.
 COLLECTION_DURATION = 400
-
-# ---------------------------------------------------------------------------
-# Lease setup
-# ---------------------------------------------------------------------------
-
-# THEIA_LEASE is the current name. THEIA_LICENSE_KEY is accepted too,
-# for anyone upgrading from a pre-lease-auth install that already had it set.
-LEASE_TOKEN = os.environ.get("THEIA_LEASE") or os.environ.get("THEIA_LICENSE_KEY") or ""
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -79,6 +72,17 @@ def save_results_to_csv(results: list[dict], session_id: str) -> str:
     return filepath
 
 
+def results_line(sdk, cog_load: str, fatigue: str) -> str:
+    """Every result on one line. Cognitive load and fatigue are the newest the
+    SDK handed over; attention style and mental readiness are running states,
+    read on the spot."""
+    attention = sdk.get_attention_style()
+    readiness = sdk.get_mental_readiness()
+    return (f"Cognitive load: {cog_load} | Fatigue: {fatigue} | "
+            f"Attention: {attention['label'] if attention else 'not yet'} | "
+            f"Mental readiness: {readiness['label'] if readiness else 'not yet'}")
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -88,14 +92,13 @@ def main():
     # Initialize the SDK with the Ganzin Sol platform
     try:
         sdk = harmoneyes_theia.TheiaSDK(
-            lease_token=LEASE_TOKEN,
             platform="Ganzin",
         )
     except harmoneyes_theia.LeaseVerificationError as e:
         sys.exit(
             f"[TheiaSDK] Lease rejected: {e}\n"
-            "Set THEIA_LEASE to a valid device lease "
-            "(contact support@harmoneyes.com if you don't have one)."
+            "Set THEIA_API_KEY_ID and THEIA_API_KEY_SECRET to your HarmonEyes API key "
+            "(see the README, \"Device Lease\")."
         )
     sdk.ip = GANZIN_IP
     sdk.port = GANZIN_PORT
@@ -109,6 +112,9 @@ def main():
     sdk.start_realtime_data()
 
     results = []
+    # get_cog_load_levels() and get_fatigue_level() hand over each result once,
+    # so keep the newest for the printed line.
+    cog_load_now, fatigue_now = "warming up", "not yet"
     start_time = time.time()
     try:
         while (time.time() - start_time) < COLLECTION_DURATION:
@@ -131,7 +137,7 @@ def main():
                     prediction = next(iter(cog_levels.values()))["prediction"]
                     row["cog_load"] = prediction
                     row["cog_load_label"] = format_cog_load(prediction)
-                    print(f"  Cognitive Load: {format_cog_load(prediction)}")
+                    cog_load_now = format_cog_load(prediction)
             except AttributeError:
                 pass  # SDK not ready yet (warmup period)
 
@@ -143,10 +149,11 @@ def main():
                     level = next(iter(fatigue.values()))
                     row["fatigue"] = level
                     row["fatigue_label"] = format_fatigue(level)
-                    print(f"  Fatigue: {format_fatigue(level)}")
+                    fatigue_now = format_fatigue(level)
             except AttributeError:
                 pass  # SDK not ready yet (warmup period)
 
+            print(f"  {results_line(sdk, cog_load_now, fatigue_now)}", flush=True)
             results.append(row)
 
             # Poll at 1 Hz

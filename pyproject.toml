@@ -53,10 +53,10 @@ build-backend = "hatchling.build"
 # repo root clean. vendor/ contains:
 #
 #   harmoneyes_theia.<abi>.so / .pyd   Nuitka-compiled wrapper package
-#   ace.<abi>.so / .pyd                Nuitka-compiled ace package
 #   harmoneyes_theia/                  data dir on the wrapper's __path__:
 #       _theia_native.<abi>.so / .pyd    pybind11 C++ core
 #       models/…                         ML model data
+#       sidecar/…                        compiled webcam gaze sidecar (.xz)
 #       .dylibs/…                        repaired native deps (macOS/delocate)
 #   harmoneyes_theia.libs/             repaired native deps (linux/win)
 #
